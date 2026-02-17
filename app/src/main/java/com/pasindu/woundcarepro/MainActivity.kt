@@ -31,6 +31,7 @@ import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
+import com.pasindu.woundcarepro.ui.review.ReviewScreen
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
 import kotlinx.coroutines.launch
 
@@ -62,6 +63,7 @@ private object Destinations {
     const val CameraCapture = "camera_capture"
     const val CameraCaptureRoute = "camera_capture/{assessmentId}"
     const val Review = "review"
+    const val ReviewRoute = "review/{assessmentId}"
     const val ManualOutline = "manual_outline"
     const val MeasurementResult = "measurement_result"
     const val History = "history"
@@ -115,14 +117,22 @@ private fun WoundCareNavGraph(
             val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
             CameraCaptureScreen(
                 assessmentId = assessmentId,
-                assessmentDao = assessmentDao
+                assessmentDao = assessmentDao,
+                onPhotoCaptured = {
+                    navController.navigate("${Destinations.Review}/$assessmentId")
+                }
             )
         }
-        composable(Destinations.Review) {
-            PlaceholderScreen(
-                title = "Review",
-                next = "Go to Manual Outline",
-                onNext = { navController.navigate(Destinations.ManualOutline) }
+        composable(
+            route = Destinations.ReviewRoute,
+            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            ReviewScreen(
+                assessmentId = assessmentId,
+                assessmentDao = assessmentDao,
+                onRetake = { navController.popBackStack() },
+                onAccept = { navController.navigate(Destinations.ManualOutline) }
             )
         }
         composable(Destinations.ManualOutline) {

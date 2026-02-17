@@ -13,7 +13,7 @@ object DatabaseProvider {
                 context.applicationContext,
                 WoundCareDatabase::class.java,
                 "wound-care.db"
-            ).build().also { instance = it }
+            ).fallbackToDestructiveMigration().build().also { instance = it }
         }
     }
 }

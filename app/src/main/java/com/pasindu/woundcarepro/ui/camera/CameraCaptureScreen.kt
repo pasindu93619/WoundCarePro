@@ -47,6 +47,7 @@ import kotlinx.coroutines.launch
 fun CameraCaptureScreen(
     assessmentId: Long,
     assessmentDao: AssessmentDao,
+    onPhotoCaptured: (Long) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -157,6 +158,7 @@ fun CameraCaptureScreen(
                                     )
                                 )
                                 statusMessage = "Saved: ${imageFile.name}"
+                                onPhotoCaptured(assessmentId)
                             }
                         }
 
