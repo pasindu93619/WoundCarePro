@@ -31,6 +31,8 @@ import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
+import com.pasindu.woundcarepro.ui.review.CalibrationScreen
+import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
 import com.pasindu.woundcarepro.ui.review.ReviewScreen
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
 import kotlinx.coroutines.launch
@@ -64,8 +66,11 @@ private object Destinations {
     const val CameraCaptureRoute = "camera_capture/{assessmentId}"
     const val Review = "review"
     const val ReviewRoute = "review/{assessmentId}"
+    const val Calibration = "calibration"
+    const val CalibrationRoute = "calibration/{assessmentId}"
     const val ManualOutline = "manual_outline"
     const val MeasurementResult = "measurement_result"
+    const val MeasurementResultRoute = "measurement_result/{assessmentId}"
     const val History = "history"
     const val Export = "export"
 }
@@ -132,20 +137,37 @@ private fun WoundCareNavGraph(
                 assessmentId = assessmentId,
                 assessmentDao = assessmentDao,
                 onRetake = { navController.popBackStack() },
-                onAccept = { navController.navigate(Destinations.ManualOutline) }
+                onAccept = { navController.navigate("${Destinations.Calibration}/$assessmentId") }
+            )
+        }
+        composable(
+            route = Destinations.CalibrationRoute,
+            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            CalibrationScreen(
+                assessmentId = assessmentId,
+                assessmentDao = assessmentDao,
+                onCalibrationSaved = {
+                    navController.navigate("${Destinations.MeasurementResult}/$assessmentId")
+                }
             )
         }
         composable(Destinations.ManualOutline) {
             PlaceholderScreen(
                 title = "Manual Outline",
-                next = "Go to Measurement Result",
-                onNext = { navController.navigate(Destinations.MeasurementResult) }
+                next = "Go to History",
+                onNext = { navController.navigate(Destinations.History) }
             )
         }
-        composable(Destinations.MeasurementResult) {
-            PlaceholderScreen(
-                title = "Measurement Result",
-                next = "Go to History",
+        composable(
+            route = Destinations.MeasurementResultRoute,
+            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            MeasurementResultScreen(
+                assessmentId = assessmentId,
+                assessmentDao = assessmentDao,
                 onNext = { navController.navigate(Destinations.History) }
             )
         }
