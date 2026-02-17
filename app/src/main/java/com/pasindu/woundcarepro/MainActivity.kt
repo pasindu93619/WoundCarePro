@@ -13,13 +13,18 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
@@ -30,6 +35,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
+import com.pasindu.woundcarepro.data.local.Measurement
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
 import kotlinx.coroutines.launch
@@ -63,8 +69,9 @@ private object Destinations {
     const val CameraCaptureRoute = "camera_capture/{assessmentId}"
     const val Review = "review"
     const val ManualOutline = "manual_outline"
-    const val MeasurementResult = "measurement_result"
+    const val MeasurementResult = "measurement_result/{assessmentId}"
     const val History = "history"
+    const val MeasurementResultBase = "measurement_result"
     const val Export = "export"
 }
 
@@ -126,16 +133,21 @@ private fun WoundCareNavGraph(
             )
         }
         composable(Destinations.ManualOutline) {
-            PlaceholderScreen(
-                title = "Manual Outline",
-                next = "Go to Measurement Result",
-                onNext = { navController.navigate(Destinations.MeasurementResult) }
+            ManualOutlineScreen(
+                assessmentDao = assessmentDao,
+                onMeasurementSaved = { assessmentId ->
+                    navController.navigate("${Destinations.MeasurementResultBase}/$assessmentId")
+                }
             )
         }
-        composable(Destinations.MeasurementResult) {
-            PlaceholderScreen(
-                title = "Measurement Result",
-                next = "Go to History",
+        composable(
+            route = Destinations.MeasurementResult,
+            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            MeasurementResultScreen(
+                assessmentId = assessmentId,
+                assessmentDao = assessmentDao,
                 onNext = { navController.navigate(Destinations.History) }
             )
         }
@@ -192,6 +204,121 @@ private fun NewAssessmentScreen(
             )
         }
     }
+}
+
+
+@Composable
+private fun ManualOutlineScreen(
+    assessmentDao: com.pasindu.woundcarepro.data.local.AssessmentDao,
+    onMeasurementSaved: (Long) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val scope = rememberCoroutineScope()
+    val polygonPoints = remember {
+        mutableStateListOf(
+            Offset(100f, 100f),
+            Offset(300f, 120f),
+            Offset(340f, 280f),
+            Offset(120f, 320f)
+        )
+    }
+    var assessmentIdInput by remember { mutableStateOf("1") }
+    val areaPixels = remember(polygonPoints.toList()) { calculatePolygonAreaPixels(polygonPoints) }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Manual Outline", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Polygon points: ${polygonPoints.size}",
+            modifier = Modifier.padding(top = 12.dp)
+        )
+        Text(
+            text = "Computed area: ${"%.2f".format(areaPixels)} px²",
+            modifier = Modifier.padding(top = 8.dp),
+            textAlign = TextAlign.Center
+        )
+        androidx.compose.material3.OutlinedTextField(
+            value = assessmentIdInput,
+            onValueChange = { assessmentIdInput = it.filter { ch -> ch.isDigit() } },
+            label = { Text("Assessment ID") },
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .fillMaxWidth()
+        )
+        Button(
+            onClick = {
+                val assessmentId = assessmentIdInput.toLongOrNull() ?: return@Button
+                scope.launch {
+                    assessmentDao.insertMeasurement(
+                        Measurement(
+                            assessmentId = assessmentId,
+                            areaPixels = areaPixels
+                        )
+                    )
+                    onMeasurementSaved(assessmentId)
+                }
+            },
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Save Measurement & View Result")
+        }
+    }
+}
+
+@Composable
+private fun MeasurementResultScreen(
+    assessmentId: Long,
+    assessmentDao: com.pasindu.woundcarepro.data.local.AssessmentDao,
+    onNext: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var areaText by remember { mutableStateOf("Loading…") }
+
+    LaunchedEffect(assessmentId) {
+        val measurement = assessmentDao.getLatestMeasurementForAssessment(assessmentId)
+        areaText = measurement?.let { "${"%.2f".format(it.areaPixels)} px²" } ?: "No measurement found"
+    }
+
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "Measurement Result", style = MaterialTheme.typography.headlineMedium)
+        Text(
+            text = "Assessment #$assessmentId",
+            modifier = Modifier.padding(top = 12.dp)
+        )
+        Text(
+            text = "Area: $areaText",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 8.dp)
+        )
+        Button(
+            onClick = onNext,
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
+            Text("Go to History")
+        }
+    }
+}
+
+private fun calculatePolygonAreaPixels(points: List<Offset>): Double {
+    if (points.size < 3) return 0.0
+    var sum = 0.0
+    for (i in points.indices) {
+        val current = points[i]
+        val next = points[(i + 1) % points.size]
+        sum += (current.x.toDouble() * next.y.toDouble()) - (next.x.toDouble() * current.y.toDouble())
+    }
+    return kotlin.math.abs(sum) * 0.5
 }
 
 @Composable
