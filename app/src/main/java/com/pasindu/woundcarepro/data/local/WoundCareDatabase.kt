@@ -14,8 +14,17 @@ import androidx.room.RoomDatabase
 data class Assessment(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
+    val patientId: String = "PATIENT-001",
     val createdAtEpochMillis: Long = System.currentTimeMillis(),
-    val status: String = "CREATED"
+    val status: String = "CREATED",
+    val woundAreaCm2: Double? = null
+)
+
+data class PatientAreaTrendPoint(
+    val assessmentId: Long,
+    val patientId: String,
+    val createdAtEpochMillis: Long,
+    val woundAreaCm2: Double
 )
 
 @Entity(
@@ -80,16 +89,32 @@ interface AssessmentDao {
     @Query("UPDATE assessments SET status = :status WHERE id = :assessmentId")
     suspend fun updateAssessmentStatus(assessmentId: Long, status: String)
 
+    @Query("UPDATE assessments SET woundAreaCm2 = :woundAreaCm2, status = :status WHERE id = :assessmentId")
+    suspend fun saveMeasurementResult(assessmentId: Long, woundAreaCm2: Double, status: String = "MEASURED")
+
     @Insert
     suspend fun insertCalibrationParams(calibrationParams: CalibrationParams): Long
 
     @Query("SELECT * FROM calibration_params WHERE assessmentId = :assessmentId ORDER BY createdAtEpochMillis DESC LIMIT 1")
     suspend fun getLatestCalibrationForAssessment(assessmentId: Long): CalibrationParams?
+
+    @Query("SELECT * FROM assessments WHERE woundAreaCm2 IS NOT NULL ORDER BY createdAtEpochMillis DESC")
+    suspend fun getMeasuredAssessments(): List<Assessment>
+
+    @Query(
+        """
+        SELECT id AS assessmentId, patientId, createdAtEpochMillis, woundAreaCm2
+        FROM assessments
+        WHERE patientId = :patientId AND woundAreaCm2 IS NOT NULL
+        ORDER BY createdAtEpochMillis ASC
+        """
+    )
+    suspend fun getTrendPointsForPatient(patientId: String): List<PatientAreaTrendPoint>
 }
 
 @Database(
     entities = [Assessment::class, ImageAsset::class, CalibrationParams::class],
-    version = 3,
+    version = 4,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {

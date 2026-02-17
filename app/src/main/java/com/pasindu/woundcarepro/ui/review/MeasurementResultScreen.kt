@@ -14,6 +14,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.pasindu.woundcarepro.data.local.AssessmentDao
 import com.pasindu.woundcarepro.data.local.CalibrationParams
+import kotlinx.coroutines.launch
 
 @Composable
 fun MeasurementResultScreen(
@@ -30,8 +32,10 @@ fun MeasurementResultScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val scope = rememberCoroutineScope()
     var calibration by remember { mutableStateOf<CalibrationParams?>(null) }
     var woundAreaPixels by remember { mutableStateOf("") }
+    var saveMessage by remember { mutableStateOf("") }
 
     LaunchedEffect(assessmentId) {
         calibration = assessmentDao.getLatestCalibrationForAssessment(assessmentId)
@@ -81,12 +85,27 @@ fun MeasurementResultScreen(
             )
         }
 
+        if (saveMessage.isNotBlank()) {
+            Text(text = saveMessage, style = MaterialTheme.typography.bodyMedium)
+        }
+
         Button(
-            onClick = onNext,
+            onClick = {
+                val finalArea = areaCm2
+                if (finalArea == null) {
+                    saveMessage = "Please enter a valid wound area to continue."
+                    return@Button
+                }
+                scope.launch {
+                    assessmentDao.saveMeasurementResult(assessmentId = assessmentId, woundAreaCm2 = finalArea)
+                    saveMessage = "Measurement saved."
+                    onNext()
+                }
+            },
             enabled = calibration != null,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Continue")
+            Text("Save & Continue")
         }
     }
 }
