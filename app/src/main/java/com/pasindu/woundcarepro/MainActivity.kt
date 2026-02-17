@@ -31,6 +31,7 @@ import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
+import com.pasindu.woundcarepro.ui.export.ExportScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen
 import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
 import com.pasindu.woundcarepro.ui.review.ReviewScreen
@@ -179,10 +180,13 @@ private fun WoundCareNavGraph(
             )
         }
         composable(Destinations.Export) {
-            PlaceholderScreen(
-                title = "Export",
-                next = "Back to Home",
-                onNext = { navController.navigate(Destinations.Home) }
+            ExportScreen(
+                assessmentDao = assessmentDao,
+                onBackHome = {
+                    navController.navigate(Destinations.Home) {
+                        popUpTo(Destinations.Home) { inclusive = true }
+                    }
+                }
             )
         }
     }
