@@ -41,6 +41,28 @@ data class ImageAsset(
     val orientationQc: String = "PENDING"
 )
 
+@Entity(
+    tableName = "calibration_params",
+    foreignKeys = [
+        ForeignKey(
+            entity = Assessment::class,
+            parentColumns = ["id"],
+            childColumns = ["assessmentId"],
+            onDelete = ForeignKey.CASCADE
+        )
+    ],
+    indices = [Index(value = ["assessmentId"])]
+)
+data class CalibrationParams(
+    @PrimaryKey(autoGenerate = true)
+    val id: Long = 0,
+    val assessmentId: Long,
+    val referenceLengthPixels: Double,
+    val referenceLengthCm: Double,
+    val cmPerPixel: Double,
+    val createdAtEpochMillis: Long = System.currentTimeMillis()
+)
+
 @Dao
 interface AssessmentDao {
     @Insert
@@ -57,11 +79,17 @@ interface AssessmentDao {
 
     @Query("UPDATE assessments SET status = :status WHERE id = :assessmentId")
     suspend fun updateAssessmentStatus(assessmentId: Long, status: String)
+
+    @Insert
+    suspend fun insertCalibrationParams(calibrationParams: CalibrationParams): Long
+
+    @Query("SELECT * FROM calibration_params WHERE assessmentId = :assessmentId ORDER BY createdAtEpochMillis DESC LIMIT 1")
+    suspend fun getLatestCalibrationForAssessment(assessmentId: Long): CalibrationParams?
 }
 
 @Database(
-    entities = [Assessment::class, ImageAsset::class],
-    version = 2,
+    entities = [Assessment::class, ImageAsset::class, CalibrationParams::class],
+    version = 3,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
