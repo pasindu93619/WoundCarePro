@@ -14,7 +14,8 @@ import androidx.room.RoomDatabase
 data class Assessment(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val createdAtEpochMillis: Long = System.currentTimeMillis()
+    val createdAtEpochMillis: Long = System.currentTimeMillis(),
+    val status: String = "CREATED"
 )
 
 @Entity(
@@ -50,11 +51,17 @@ interface AssessmentDao {
 
     @Query("SELECT * FROM image_assets WHERE assessmentId = :assessmentId ORDER BY capturedAtEpochMillis DESC")
     suspend fun getAssetsForAssessment(assessmentId: Long): List<ImageAsset>
+
+    @Query("SELECT * FROM image_assets WHERE assessmentId = :assessmentId ORDER BY capturedAtEpochMillis DESC LIMIT 1")
+    suspend fun getLatestAssetForAssessment(assessmentId: Long): ImageAsset?
+
+    @Query("UPDATE assessments SET status = :status WHERE id = :assessmentId")
+    suspend fun updateAssessmentStatus(assessmentId: Long, status: String)
 }
 
 @Database(
     entities = [Assessment::class, ImageAsset::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
