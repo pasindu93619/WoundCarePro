@@ -31,6 +31,7 @@ import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
+import com.pasindu.woundcarepro.ui.history.HistoryScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen
 import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
 import com.pasindu.woundcarepro.ui.review.ReviewScreen
@@ -172,9 +173,8 @@ private fun WoundCareNavGraph(
             )
         }
         composable(Destinations.History) {
-            PlaceholderScreen(
-                title = "History",
-                next = "Go to Export",
+            HistoryScreen(
+                assessmentDao = assessmentDao,
                 onNext = { navController.navigate(Destinations.Export) }
             )
         }
