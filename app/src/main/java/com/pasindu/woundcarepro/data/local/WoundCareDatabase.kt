@@ -9,6 +9,10 @@ import androidx.room.Insert
 import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
+import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
+import com.pasindu.woundcarepro.data.local.dao.PatientDao
+import com.pasindu.woundcarepro.data.local.entity.Measurement
+import com.pasindu.woundcarepro.data.local.entity.Patient
 
 @Entity(tableName = "assessments")
 data class Assessment(
@@ -113,10 +117,20 @@ interface AssessmentDao {
 }
 
 @Database(
-    entities = [Assessment::class, ImageAsset::class, CalibrationParams::class],
-    version = 4,
+    entities = [
+        Assessment::class,
+        ImageAsset::class,
+        CalibrationParams::class,
+        Patient::class,
+        com.pasindu.woundcarepro.data.local.entity.Assessment::class,
+        Measurement::class
+    ],
+    version = 5,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
     abstract fun assessmentDao(): AssessmentDao
+    abstract fun patientDao(): PatientDao
+    abstract fun patientAssessmentDao(): com.pasindu.woundcarepro.data.local.dao.AssessmentDao
+    abstract fun measurementDao(): MeasurementDao
 }
