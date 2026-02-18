@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -52,6 +53,8 @@ fun ReviewScreen(
 
     val statusMessage = if (assessment?.imagePath == null) {
         "No captured image found. Please retake."
+    } else if (uiState.isPolygonClosed) {
+        "Polygon closed. Save to persist."
     } else {
         "Tap on wound border to add polygon points"
     }
@@ -81,8 +84,9 @@ fun ReviewScreen(
                     .fillMaxWidth()
                     .background(Color.Black)
                     .onSizeChanged { canvasSize = it }
-                    .pointerInput(bitmap, uiState.points) {
+                    .pointerInput(bitmap, uiState.points, uiState.isPolygonClosed) {
                         detectTapGestures { tapOffset ->
+                            if (uiState.isPolygonClosed) return@detectTapGestures
                             val mapped = mapCanvasTapToImagePoint(
                                 tap = tapOffset,
                                 canvasSize = canvasSize,
@@ -110,6 +114,19 @@ fun ReviewScreen(
                         )
                     }
 
+                    if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
+                        drawPath(
+                            path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(mappedPoints.first().x, mappedPoints.first().y)
+                                for (i in 1 until mappedPoints.size) {
+                                    lineTo(mappedPoints[i].x, mappedPoints[i].y)
+                                }
+                                close()
+                            },
+                            color = Color.Red.copy(alpha = 0.25f)
+                        )
+                    }
+
                     if (mappedPoints.size >= 2) {
                         for (i in 0 until mappedPoints.lastIndex) {
                             drawLine(
@@ -121,15 +138,25 @@ fun ReviewScreen(
                         }
                     }
 
+                    if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
+                        drawLine(
+                            color = Color.Red,
+                            start = mappedPoints.last(),
+                            end = mappedPoints.first(),
+                            strokeWidth = 4f
+                        )
+                    }
+
                     mappedPoints.forEach { point ->
                         drawCircle(color = Color.Yellow, radius = 8f, center = point)
+                        drawCircle(color = Color.Black, radius = 8f, center = point, style = Stroke(width = 2f))
                     }
                 }
             }
         }
 
         Text(
-            text = "Saved pixel area: ${uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"}",
+            text = "Pixel area: ${uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"}",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -140,15 +167,22 @@ fun ReviewScreen(
             Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f)) {
                 Text("Undo")
             }
+            Button(
+                onClick = { viewModel.closePolygon() },
+                enabled = uiState.points.size >= 3 && !uiState.isPolygonClosed,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Close")
+            }
             Button(onClick = { viewModel.clearPoints() }, modifier = Modifier.weight(1f)) {
                 Text("Clear")
             }
             Button(
                 onClick = { viewModel.saveOutline(assessmentId) },
-                enabled = uiState.points.size >= 3,
+                enabled = uiState.isPolygonClosed,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Save Outline")
+                Text("Save")
             }
         }
 
@@ -212,7 +246,7 @@ private fun mapCanvasTapToImagePoint(
     return PointF(normalizedX * imageWidth, normalizedY * imageHeight)
 }
 
-private fun mapImagePointToCanvasOffset(
+internal fun mapImagePointToCanvasOffset(
     point: PointF,
     canvasSize: androidx.compose.ui.geometry.Size,
     imageWidth: Float,

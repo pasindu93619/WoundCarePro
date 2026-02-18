@@ -5,10 +5,6 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlin.math.abs
 
-data class WoundOutline(
-    val points: List<PointF>
-)
-
 object PolygonAreaCalculator {
     fun calculateAreaPixels(points: List<PointF>): Double {
         if (points.size < 3) return 0.0
@@ -26,14 +22,14 @@ object PolygonAreaCalculator {
 object OutlineJsonConverter {
     private val gson = Gson()
 
-    fun toJson(outline: WoundOutline): String = gson.toJson(outline)
+    fun toJson(points: List<PointF>): String = gson.toJson(points)
 
-    fun fromJson(json: String?): WoundOutline {
-        if (json.isNullOrBlank()) return WoundOutline(emptyList())
+    fun fromJson(json: String?): List<PointF> {
+        if (json.isNullOrBlank()) return emptyList()
 
         return runCatching {
-            val type = object : TypeToken<WoundOutline>() {}.type
-            gson.fromJson<WoundOutline>(json, type) ?: WoundOutline(emptyList())
-        }.getOrDefault(WoundOutline(emptyList()))
+            val type = object : TypeToken<List<PointF>>() {}.type
+            gson.fromJson<List<PointF>>(json, type) ?: emptyList()
+        }.getOrDefault(emptyList())
     }
 }

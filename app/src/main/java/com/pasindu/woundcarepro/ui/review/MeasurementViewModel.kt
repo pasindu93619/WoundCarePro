@@ -3,6 +3,7 @@ package com.pasindu.woundcarepro.ui.review
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepository
@@ -25,11 +26,15 @@ class MeasurementViewModel(
     private val _measurementComputation = MutableStateFlow<MeasurementComputation?>(null)
     val measurementComputation: StateFlow<MeasurementComputation?> = _measurementComputation
 
+    private val _assessment = MutableStateFlow<Assessment?>(null)
+    val assessment: StateFlow<Assessment?> = _assessment
+
     fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
             val assessment = assessmentRepository.getById(assessmentId) ?: return@launch
-            val points = OutlineJsonConverter.fromJson(assessment.outlineJson).points
-            val areaPixels = PolygonAreaCalculator.calculateAreaPixels(points)
+            _assessment.value = assessment
+            val points = OutlineJsonConverter.fromJson(assessment.polygonPointsJson ?: assessment.outlineJson)
+            val areaPixels = assessment.pixelArea ?: PolygonAreaCalculator.calculateAreaPixels(points)
             val areaCm2 = assessment.calibrationFactor?.let { areaPixels * it }
             _measurementComputation.value = MeasurementComputation(areaPixels = areaPixels, areaCm2 = areaCm2)
         }

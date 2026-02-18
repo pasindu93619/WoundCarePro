@@ -29,6 +29,7 @@ class CameraViewModel @Inject constructor(
                     timestamp = System.currentTimeMillis(),
                     imagePath = null,
                     outlineJson = null,
+                    polygonPointsJson = null,
                     pixelArea = null,
                     calibrationFactor = null
                 )

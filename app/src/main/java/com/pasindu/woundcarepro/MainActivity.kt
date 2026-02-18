@@ -42,8 +42,6 @@ import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
 import com.pasindu.woundcarepro.ui.review.MeasurementViewModel
 import com.pasindu.woundcarepro.ui.review.MeasurementViewModelFactory
 import com.pasindu.woundcarepro.ui.review.ReviewScreen
-import com.pasindu.woundcarepro.ui.review.ReviewViewModel
-import com.pasindu.woundcarepro.ui.review.ReviewViewModelFactory
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -98,7 +96,6 @@ private fun WoundCareNavGraph(
     measurementRepository: MeasurementRepositoryImpl,
     modifier: Modifier = Modifier
 ) {
-    val reviewViewModel: ReviewViewModel = viewModel(factory = ReviewViewModelFactory(assessmentRepository))
     val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository))
     val measurementViewModel: MeasurementViewModel = viewModel(
         factory = MeasurementViewModelFactory(assessmentRepository, measurementRepository)
@@ -156,7 +153,7 @@ private fun WoundCareNavGraph(
             val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             ReviewScreen(
                 assessmentId = assessmentId,
-                viewModel = reviewViewModel,
+                viewModel = hiltViewModel(),
                 onRetake = { navController.popBackStack() },
                 onAccept = { navController.navigate("${Destinations.Calibration}/$assessmentId") }
             )
