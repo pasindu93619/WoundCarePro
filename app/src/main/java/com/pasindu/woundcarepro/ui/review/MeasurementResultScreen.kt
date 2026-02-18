@@ -12,9 +12,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -26,8 +23,7 @@ fun MeasurementResultScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var saveMessage by remember { mutableStateOf("") }
-    val computation by viewModel.measurementComputation.collectAsState()
+    val areaPixels by viewModel.areaPixels.collectAsState()
 
     LaunchedEffect(assessmentId) {
         viewModel.loadMeasurement(assessmentId)
@@ -42,39 +38,28 @@ fun MeasurementResultScreen(
     ) {
         Text(text = "Measurement Result", style = MaterialTheme.typography.headlineMedium)
 
-        Text(
-            text = "Area (pixels²): ${computation?.areaPixels?.let { "%.2f".format(it) } ?: "N/A"}",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        val areaCm2 = computation?.areaCm2
-        if (areaCm2 != null) {
+        if (areaPixels == null) {
             Text(
-                text = "Area (cm²): %.4f".format(areaCm2),
+                text = "No outline saved yet",
                 style = MaterialTheme.typography.bodyLarge
             )
         } else {
             Text(
-                text = "Calibration not set. Area in cm² is unavailable.",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Area (pixels²): ${"%.2f".format(areaPixels)}",
+                style = MaterialTheme.typography.bodyLarge
             )
         }
 
-        if (saveMessage.isNotBlank()) {
-            Text(text = saveMessage, style = MaterialTheme.typography.bodyMedium)
-        }
+        Text(
+            text = "Calibration not applied yet (cm² will be added next milestone)",
+            style = MaterialTheme.typography.bodyMedium
+        )
 
         Button(
-            onClick = {
-                viewModel.saveMeasurement(assessmentId = assessmentId) {
-                    saveMessage = "Measurement saved."
-                    onNext()
-                }
-            },
-            enabled = computation != null,
+            onClick = onNext,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Save & Continue")
+            Text("Continue")
         }
     }
 }

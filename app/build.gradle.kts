@@ -61,6 +61,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.google.gson)
     implementation(libs.hilt.android)
     implementation("com.google.code.gson:gson:2.11.0")
     ksp(libs.androidx.room.compiler)
