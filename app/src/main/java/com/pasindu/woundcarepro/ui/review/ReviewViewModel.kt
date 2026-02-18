@@ -1,13 +1,22 @@
 package com.pasindu.woundcarepro.ui.review
 
+import android.graphics.PointF
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
+import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
+import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
+import com.pasindu.woundcarepro.measurement.WoundOutline
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
+data class ReviewUiState(
+    val points: List<PointF> = emptyList(),
+    val pixelArea: Double? = null
+)
 
 class ReviewViewModel(
     private val assessmentRepository: AssessmentRepository
@@ -15,18 +24,46 @@ class ReviewViewModel(
     private val _assessment = MutableStateFlow<Assessment?>(null)
     val assessment: StateFlow<Assessment?> = _assessment
 
+    private val _uiState = MutableStateFlow(ReviewUiState())
+    val uiState: StateFlow<ReviewUiState> = _uiState
+
     fun loadAssessment(assessmentId: String) {
         viewModelScope.launch {
-            _assessment.value = assessmentRepository.getById(assessmentId)
+            val loaded = assessmentRepository.getById(assessmentId)
+            _assessment.value = loaded
+            val outline = OutlineJsonConverter.fromJson(loaded?.outlineJson)
+            _uiState.value = ReviewUiState(
+                points = outline.points,
+                pixelArea = loaded?.pixelArea
+            )
         }
     }
 
-    fun updateOutline(assessmentId: String, outlineJson: String, onUpdated: () -> Unit = {}) {
+    fun addPoint(point: PointF) {
+        val updated = _uiState.value.points + point
+        _uiState.value = _uiState.value.copy(points = updated)
+    }
+
+    fun undoLastPoint() {
+        if (_uiState.value.points.isEmpty()) return
+        _uiState.value = _uiState.value.copy(points = _uiState.value.points.dropLast(1))
+    }
+
+    fun clearPoints() {
+        _uiState.value = _uiState.value.copy(points = emptyList())
+    }
+
+    fun saveOutline(assessmentId: String, onSaved: () -> Unit = {}) {
         viewModelScope.launch {
             val current = assessmentRepository.getById(assessmentId) ?: return@launch
-            assessmentRepository.upsert(current.copy(outlineJson = outlineJson))
-            _assessment.value = current.copy(outlineJson = outlineJson)
-            onUpdated()
+            val points = _uiState.value.points
+            val area = PolygonAreaCalculator.calculateAreaPixels(points)
+            val outlineJson = OutlineJsonConverter.toJson(WoundOutline(points = points))
+            val updated = current.copy(outlineJson = outlineJson, pixelArea = area)
+            assessmentRepository.upsert(updated)
+            _assessment.value = updated
+            _uiState.value = _uiState.value.copy(pixelArea = area)
+            onSaved()
         }
     }
 }

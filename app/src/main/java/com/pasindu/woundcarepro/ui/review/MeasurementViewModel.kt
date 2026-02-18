@@ -28,7 +28,7 @@ class MeasurementViewModel(
     fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
             val assessment = assessmentRepository.getById(assessmentId) ?: return@launch
-            val points = OutlineJsonConverter.fromJson(assessment.outlineJson)
+            val points = OutlineJsonConverter.fromJson(assessment.outlineJson).points
             val areaPixels = PolygonAreaCalculator.calculateAreaPixels(points)
             val areaCm2 = assessment.calibrationFactor?.let { areaPixels * it }
             _measurementComputation.value = MeasurementComputation(areaPixels = areaPixels, areaCm2 = areaCm2)

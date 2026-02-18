@@ -28,5 +28,6 @@ data class Assessment(
     val timestamp: Long,
     val imagePath: String?,
     val outlineJson: String?,
+    val pixelArea: Double?,
     val calibrationFactor: Double?
 )
