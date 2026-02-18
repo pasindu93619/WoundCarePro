@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -30,7 +31,6 @@ import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepositoryImpl
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
 import com.pasindu.woundcarepro.ui.camera.CameraViewModel
-import com.pasindu.woundcarepro.ui.camera.CameraViewModelFactory
 import com.pasindu.woundcarepro.ui.history.HistoryScreen
 import com.pasindu.woundcarepro.ui.history.HistoryViewModel
 import com.pasindu.woundcarepro.ui.history.HistoryViewModelFactory
@@ -44,7 +44,9 @@ import com.pasindu.woundcarepro.ui.review.ReviewScreen
 import com.pasindu.woundcarepro.ui.review.ReviewViewModel
 import com.pasindu.woundcarepro.ui.review.ReviewViewModelFactory
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
+import dagger.hilt.android.AndroidEntryPoint
 
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -94,7 +96,6 @@ private fun WoundCareNavGraph(
     measurementRepository: MeasurementRepositoryImpl,
     modifier: Modifier = Modifier
 ) {
-    val cameraViewModel: CameraViewModel = viewModel(factory = CameraViewModelFactory(assessmentRepository))
     val reviewViewModel: ReviewViewModel = viewModel(factory = ReviewViewModelFactory(assessmentRepository))
     val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository))
     val measurementViewModel: MeasurementViewModel = viewModel(
@@ -132,8 +133,7 @@ private fun WoundCareNavGraph(
         }
         composable(Destinations.NewAssessment) {
             NewAssessmentScreen(
-                onCreateAssessment = { navController.navigate("${Destinations.CameraCapture}/$it") },
-                viewModel = cameraViewModel
+                onCreateAssessment = { navController.navigate("${Destinations.CameraCapture}/$it") }
             )
         }
         composable(
@@ -143,7 +143,7 @@ private fun WoundCareNavGraph(
             val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             CameraCaptureScreen(
                 assessmentId = assessmentId,
-                viewModel = cameraViewModel,
+                viewModel = hiltViewModel<CameraViewModel>(),
                 onPhotoCaptured = { navController.navigate("${Destinations.Review}/$assessmentId") }
             )
         }
@@ -209,8 +209,8 @@ private fun WoundCareNavGraph(
 @Composable
 private fun NewAssessmentScreen(
     onCreateAssessment: (String) -> Unit,
-    viewModel: CameraViewModel,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: CameraViewModel = hiltViewModel()
 ) {
     Column(
         modifier = modifier

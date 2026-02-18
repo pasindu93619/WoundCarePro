@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.core.content.ContextCompat
 import java.io.File
 import java.util.concurrent.ExecutorService
@@ -42,9 +43,9 @@ import java.util.concurrent.Executors
 @Composable
 fun CameraCaptureScreen(
     assessmentId: String,
-    viewModel: CameraViewModel,
     onPhotoCaptured: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: CameraViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
