@@ -41,22 +41,23 @@ class ReviewViewModel(
 
     fun addPoint(point: PointF) {
         val updated = _uiState.value.points + point
-        _uiState.value = _uiState.value.copy(points = updated)
+        _uiState.value = _uiState.value.copy(points = updated, pixelArea = null)
     }
 
     fun undoLastPoint() {
         if (_uiState.value.points.isEmpty()) return
-        _uiState.value = _uiState.value.copy(points = _uiState.value.points.dropLast(1))
+        _uiState.value = _uiState.value.copy(points = _uiState.value.points.dropLast(1), pixelArea = null)
     }
 
     fun clearPoints() {
-        _uiState.value = _uiState.value.copy(points = emptyList())
+        _uiState.value = _uiState.value.copy(points = emptyList(), pixelArea = null)
     }
 
     fun saveOutline(assessmentId: String, onSaved: () -> Unit = {}) {
         viewModelScope.launch {
             val current = assessmentRepository.getById(assessmentId) ?: return@launch
             val points = _uiState.value.points
+            if (points.size < 3) return@launch
             val area = PolygonAreaCalculator.calculateAreaPixels(points)
             val outlineJson = OutlineJsonConverter.toJson(WoundOutline(points = points))
             val updated = current.copy(outlineJson = outlineJson, pixelArea = area)

@@ -121,6 +121,15 @@ fun ReviewScreen(
                         }
                     }
 
+                    if (mappedPoints.size >= 3) {
+                        drawLine(
+                            color = Color.Red.copy(alpha = 0.7f),
+                            start = mappedPoints.last(),
+                            end = mappedPoints.first(),
+                            strokeWidth = 3f
+                        )
+                    }
+
                     mappedPoints.forEach { point ->
                         drawCircle(color = Color.Yellow, radius = 8f, center = point)
                     }
