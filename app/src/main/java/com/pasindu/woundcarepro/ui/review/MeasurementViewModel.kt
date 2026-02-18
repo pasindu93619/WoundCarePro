@@ -6,38 +6,44 @@ import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepository
+import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
+import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
 import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
+data class MeasurementComputation(
+    val areaPixels: Double,
+    val areaCm2: Double?
+)
+
 class MeasurementViewModel(
     private val assessmentRepository: AssessmentRepository,
     private val measurementRepository: MeasurementRepository
 ) : ViewModel() {
-    private val _calibrationFactor = MutableStateFlow<Double?>(null)
-    val calibrationFactor: StateFlow<Double?> = _calibrationFactor
+    private val _measurementComputation = MutableStateFlow<MeasurementComputation?>(null)
+    val measurementComputation: StateFlow<MeasurementComputation?> = _measurementComputation
 
-    fun loadCalibration(assessmentId: String) {
+    fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
-            _calibrationFactor.value = assessmentRepository.getById(assessmentId)?.calibrationFactor
+            val assessment = assessmentRepository.getById(assessmentId) ?: return@launch
+            val points = OutlineJsonConverter.fromJson(assessment.outlineJson)
+            val areaPixels = PolygonAreaCalculator.calculateAreaPixels(points)
+            val areaCm2 = assessment.calibrationFactor?.let { areaPixels * it }
+            _measurementComputation.value = MeasurementComputation(areaPixels = areaPixels, areaCm2 = areaCm2)
         }
     }
 
-    fun computeAreaCm2(areaPixels: Double): Double? {
-        val factor = _calibrationFactor.value ?: return null
-        return areaPixels * factor * factor
-    }
-
-    fun saveMeasurement(assessmentId: String, areaPixels: Double, onSaved: () -> Unit = {}) {
+    fun saveMeasurement(assessmentId: String, onSaved: () -> Unit = {}) {
         viewModelScope.launch {
-            val areaCm2 = computeAreaCm2(areaPixels) ?: return@launch
+            val computed = _measurementComputation.value ?: return@launch
             measurementRepository.upsert(
                 Measurement(
                     measurementId = UUID.randomUUID().toString(),
                     assessmentId = assessmentId,
-                    areaPixels = areaPixels,
-                    areaCm2 = areaCm2,
+                    areaPixels = computed.areaPixels,
+                    areaCm2 = computed.areaCm2,
                     createdAt = System.currentTimeMillis()
                 )
             )
