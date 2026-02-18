@@ -19,6 +19,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
+import com.pasindu.woundcarepro.measurement.OutlinePoint
 
 @Composable
 fun ReviewScreen(
@@ -74,7 +76,21 @@ fun ReviewScreen(
 
         Button(
             onClick = {
-                viewModel.updateOutline(assessmentId, outlineJson = "[]") {
+                val outlinePoints = bitmap?.let {
+                    val width = it.width.toDouble()
+                    val height = it.height.toDouble()
+                    listOf(
+                        OutlinePoint(width * 0.25, height * 0.25),
+                        OutlinePoint(width * 0.75, height * 0.25),
+                        OutlinePoint(width * 0.75, height * 0.75),
+                        OutlinePoint(width * 0.25, height * 0.75)
+                    )
+                }.orEmpty()
+
+                viewModel.updateOutline(
+                    assessmentId,
+                    outlineJson = OutlineJsonConverter.toJson(outlinePoints)
+                ) {
                     onAccept()
                 }
             },

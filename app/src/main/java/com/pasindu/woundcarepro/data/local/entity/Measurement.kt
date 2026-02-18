@@ -25,6 +25,6 @@ data class Measurement(
     val measurementId: String,
     val assessmentId: String,
     val areaPixels: Double,
-    val areaCm2: Double,
+    val areaCm2: Double?,
     val createdAt: Long
 )

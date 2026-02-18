@@ -5,10 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -19,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -29,16 +26,12 @@ fun MeasurementResultScreen(
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var woundAreaPixels by remember { mutableStateOf("") }
     var saveMessage by remember { mutableStateOf("") }
-    val calibrationFactor by viewModel.calibrationFactor.collectAsState()
+    val computation by viewModel.measurementComputation.collectAsState()
 
     LaunchedEffect(assessmentId) {
-        viewModel.loadCalibration(assessmentId)
+        viewModel.loadMeasurement(assessmentId)
     }
-
-    val areaPixelsValue = woundAreaPixels.toDoubleOrNull()
-    val areaCm2 = areaPixelsValue?.let { viewModel.computeAreaCm2(it) }
 
     Column(
         modifier = modifier
@@ -49,31 +42,21 @@ fun MeasurementResultScreen(
     ) {
         Text(text = "Measurement Result", style = MaterialTheme.typography.headlineMedium)
 
-        if (calibrationFactor == null) {
+        Text(
+            text = "Area (pixels²): ${computation?.areaPixels?.let { "%.2f".format(it) } ?: "N/A"}",
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        val areaCm2 = computation?.areaCm2
+        if (areaCm2 != null) {
             Text(
-                text = "No calibration found. Please calibrate before measurement.",
-                style = MaterialTheme.typography.bodyMedium
+                text = "Area (cm²): %.4f".format(areaCm2),
+                style = MaterialTheme.typography.bodyLarge
             )
         } else {
             Text(
-                text = "Calibration: 1 px = %.6f cm".format(calibrationFactor),
+                text = "Calibration not set. Area in cm² is unavailable.",
                 style = MaterialTheme.typography.bodyMedium
-            )
-            OutlinedTextField(
-                value = woundAreaPixels,
-                onValueChange = { woundAreaPixels = it },
-                label = { Text("Wound area (pixels²)") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Text(
-                text = if (areaCm2 != null) {
-                    "Converted wound area: %.4f cm²".format(areaCm2)
-                } else {
-                    "Enter wound area in pixels² to convert"
-                },
-                style = MaterialTheme.typography.bodyLarge
             )
         }
 
@@ -83,17 +66,12 @@ fun MeasurementResultScreen(
 
         Button(
             onClick = {
-                val finalPixels = areaPixelsValue
-                if (finalPixels == null) {
-                    saveMessage = "Please enter a valid wound area to continue."
-                    return@Button
-                }
-                viewModel.saveMeasurement(assessmentId = assessmentId, areaPixels = finalPixels) {
+                viewModel.saveMeasurement(assessmentId = assessmentId) {
                     saveMessage = "Measurement saved."
                     onNext()
                 }
             },
-            enabled = calibrationFactor != null,
+            enabled = computation != null,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Save & Continue")
