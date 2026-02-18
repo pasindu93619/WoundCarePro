@@ -158,7 +158,7 @@ private fun WoundCareNavGraph(
                 assessmentId = assessmentId,
                 viewModel = reviewViewModel,
                 onRetake = { navController.popBackStack() },
-                onAccept = { navController.navigate("${Destinations.Calibration}/$assessmentId") }
+                onAccept = { navController.navigate("${Destinations.MeasurementResult}/$assessmentId") }
             )
         }
         composable(
