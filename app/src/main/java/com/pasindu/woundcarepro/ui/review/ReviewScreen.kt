@@ -12,41 +12,32 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
-import com.pasindu.woundcarepro.data.local.AssessmentDao
-import com.pasindu.woundcarepro.data.local.ImageAsset
-import kotlinx.coroutines.launch
-
-private const val AcceptedStatus = "PHOTO_ACCEPTED"
 
 @Composable
 fun ReviewScreen(
-    assessmentId: Long,
-    assessmentDao: AssessmentDao,
+    assessmentId: String,
+    viewModel: ReviewViewModel,
     onRetake: () -> Unit,
     onAccept: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    var latestAsset by remember { mutableStateOf<ImageAsset?>(null) }
-    var statusMessage by remember { mutableStateOf("Loading captured image...") }
+    val assessment by viewModel.assessment.collectAsState()
 
     LaunchedEffect(assessmentId) {
-        latestAsset = assessmentDao.getLatestAssetForAssessment(assessmentId)
-        statusMessage = if (latestAsset == null) {
-            "No captured image found. Please retake."
-        } else {
-            "Review captured image"
-        }
+        viewModel.loadAssessment(assessmentId)
+    }
+
+    val statusMessage = if (assessment?.imagePath == null) {
+        "No captured image found. Please retake."
+    } else {
+        "Review captured image"
     }
 
     Column(
@@ -59,8 +50,8 @@ fun ReviewScreen(
         Text(text = "Review", style = MaterialTheme.typography.headlineMedium)
         Text(text = statusMessage, style = MaterialTheme.typography.bodyMedium)
 
-        val bitmap = remember(latestAsset?.filePath) {
-            latestAsset?.filePath?.let { path -> BitmapFactory.decodeFile(path)?.asImageBitmap() }
+        val bitmap = assessment?.imagePath?.let { path ->
+            BitmapFactory.decodeFile(path)?.asImageBitmap()
         }
 
         if (bitmap != null) {
@@ -83,12 +74,11 @@ fun ReviewScreen(
 
         Button(
             onClick = {
-                scope.launch {
-                    assessmentDao.updateAssessmentStatus(assessmentId, AcceptedStatus)
+                viewModel.updateOutline(assessmentId, outlineJson = "[]") {
                     onAccept()
                 }
             },
-            enabled = latestAsset != null,
+            enabled = assessment?.imagePath != null,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Accept & Continue")

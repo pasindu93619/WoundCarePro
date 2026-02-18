@@ -13,30 +13,37 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.pasindu.woundcarepro.data.local.Assessment
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
+import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
+import com.pasindu.woundcarepro.data.local.repository.MeasurementRepositoryImpl
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
+import com.pasindu.woundcarepro.ui.camera.CameraViewModel
+import com.pasindu.woundcarepro.ui.camera.CameraViewModelFactory
 import com.pasindu.woundcarepro.ui.history.HistoryScreen
+import com.pasindu.woundcarepro.ui.history.HistoryViewModel
+import com.pasindu.woundcarepro.ui.history.HistoryViewModelFactory
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen
+import com.pasindu.woundcarepro.ui.review.CalibrationViewModel
+import com.pasindu.woundcarepro.ui.review.CalibrationViewModelFactory
 import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
+import com.pasindu.woundcarepro.ui.review.MeasurementViewModel
+import com.pasindu.woundcarepro.ui.review.MeasurementViewModelFactory
 import com.pasindu.woundcarepro.ui.review.ReviewScreen
+import com.pasindu.woundcarepro.ui.review.ReviewViewModel
+import com.pasindu.woundcarepro.ui.review.ReviewViewModelFactory
 import com.pasindu.woundcarepro.ui.theme.WoundCareProTheme
-import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,11 +52,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             WoundCareProTheme {
                 val navController = rememberNavController()
-                val assessmentDao = remember { DatabaseProvider.getDatabase(applicationContext).assessmentDao() }
+                val database = remember { DatabaseProvider.getDatabase(applicationContext) }
+                val assessmentRepository = remember { AssessmentRepositoryImpl(database.assessmentDao()) }
+                val measurementRepository = remember { MeasurementRepositoryImpl(database.measurementDao()) }
+
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     WoundCareNavGraph(
                         navController = navController,
-                        assessmentDao = assessmentDao,
+                        assessmentRepository = assessmentRepository,
+                        measurementRepository = measurementRepository,
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -79,9 +90,20 @@ private object Destinations {
 @Composable
 private fun WoundCareNavGraph(
     navController: NavHostController,
-    assessmentDao: com.pasindu.woundcarepro.data.local.AssessmentDao,
+    assessmentRepository: AssessmentRepositoryImpl,
+    measurementRepository: MeasurementRepositoryImpl,
     modifier: Modifier = Modifier
 ) {
+    val cameraViewModel: CameraViewModel = viewModel(factory = CameraViewModelFactory(assessmentRepository))
+    val reviewViewModel: ReviewViewModel = viewModel(factory = ReviewViewModelFactory(assessmentRepository))
+    val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository))
+    val measurementViewModel: MeasurementViewModel = viewModel(
+        factory = MeasurementViewModelFactory(assessmentRepository, measurementRepository)
+    )
+    val historyViewModel: HistoryViewModel = viewModel(
+        factory = HistoryViewModelFactory(assessmentRepository, measurementRepository)
+    )
+
     NavHost(
         navController = navController,
         startDestination = Destinations.Home,
@@ -110,45 +132,41 @@ private fun WoundCareNavGraph(
         }
         composable(Destinations.NewAssessment) {
             NewAssessmentScreen(
-                onCreateAssessment = {
-                    navController.navigate("${Destinations.CameraCapture}/$it")
-                },
-                assessmentDao = assessmentDao
+                onCreateAssessment = { navController.navigate("${Destinations.CameraCapture}/$it") },
+                viewModel = cameraViewModel
             )
         }
         composable(
             route = Destinations.CameraCaptureRoute,
-            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+            arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             CameraCaptureScreen(
                 assessmentId = assessmentId,
-                assessmentDao = assessmentDao,
-                onPhotoCaptured = {
-                    navController.navigate("${Destinations.Review}/$assessmentId")
-                }
+                viewModel = cameraViewModel,
+                onPhotoCaptured = { navController.navigate("${Destinations.Review}/$assessmentId") }
             )
         }
         composable(
             route = Destinations.ReviewRoute,
-            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+            arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             ReviewScreen(
                 assessmentId = assessmentId,
-                assessmentDao = assessmentDao,
+                viewModel = reviewViewModel,
                 onRetake = { navController.popBackStack() },
                 onAccept = { navController.navigate("${Destinations.Calibration}/$assessmentId") }
             )
         }
         composable(
             route = Destinations.CalibrationRoute,
-            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+            arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             CalibrationScreen(
                 assessmentId = assessmentId,
-                assessmentDao = assessmentDao,
+                viewModel = calibrationViewModel,
                 onCalibrationSaved = {
                     navController.navigate("${Destinations.MeasurementResult}/$assessmentId")
                 }
@@ -163,18 +181,18 @@ private fun WoundCareNavGraph(
         }
         composable(
             route = Destinations.MeasurementResultRoute,
-            arguments = listOf(navArgument("assessmentId") { type = NavType.LongType })
+            arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })
         ) { backStackEntry ->
-            val assessmentId = backStackEntry.arguments?.getLong("assessmentId") ?: return@composable
+            val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
             MeasurementResultScreen(
                 assessmentId = assessmentId,
-                assessmentDao = assessmentDao,
+                viewModel = measurementViewModel,
                 onNext = { navController.navigate(Destinations.History) }
             )
         }
         composable(Destinations.History) {
             HistoryScreen(
-                assessmentDao = assessmentDao,
+                viewModel = historyViewModel,
                 onNext = { navController.navigate(Destinations.Export) }
             )
         }
@@ -190,13 +208,10 @@ private fun WoundCareNavGraph(
 
 @Composable
 private fun NewAssessmentScreen(
-    onCreateAssessment: (Long) -> Unit,
-    assessmentDao: com.pasindu.woundcarepro.data.local.AssessmentDao,
+    onCreateAssessment: (String) -> Unit,
+    viewModel: CameraViewModel,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    var latestAssessmentId by remember { mutableLongStateOf(0L) }
-
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -207,21 +222,11 @@ private fun NewAssessmentScreen(
         Text(text = "New Assessment", style = MaterialTheme.typography.headlineMedium)
         Button(
             onClick = {
-                scope.launch {
-                    val assessmentId = assessmentDao.insertAssessment(Assessment())
-                    latestAssessmentId = assessmentId
-                    onCreateAssessment(assessmentId)
-                }
+                viewModel.createAssessment(onCreated = onCreateAssessment)
             },
             modifier = Modifier.padding(top = 16.dp)
         ) {
             Text(text = "Create Assessment & Open Camera")
-        }
-        if (latestAssessmentId > 0L) {
-            Text(
-                text = "Created assessment #$latestAssessmentId",
-                modifier = Modifier.padding(top = 12.dp)
-            )
         }
     }
 }

@@ -12,41 +12,33 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.pasindu.woundcarepro.data.local.AssessmentDao
-import com.pasindu.woundcarepro.data.local.CalibrationParams
-import kotlinx.coroutines.launch
 
 @Composable
 fun MeasurementResultScreen(
-    assessmentId: Long,
-    assessmentDao: AssessmentDao,
+    assessmentId: String,
+    viewModel: MeasurementViewModel,
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
-    var calibration by remember { mutableStateOf<CalibrationParams?>(null) }
     var woundAreaPixels by remember { mutableStateOf("") }
     var saveMessage by remember { mutableStateOf("") }
+    val calibrationFactor by viewModel.calibrationFactor.collectAsState()
 
     LaunchedEffect(assessmentId) {
-        calibration = assessmentDao.getLatestCalibrationForAssessment(assessmentId)
+        viewModel.loadCalibration(assessmentId)
     }
 
     val areaPixelsValue = woundAreaPixels.toDoubleOrNull()
-    val areaCm2 = if (calibration != null && areaPixelsValue != null && areaPixelsValue > 0.0) {
-        areaPixelsValue * calibration!!.cmPerPixel * calibration!!.cmPerPixel
-    } else {
-        null
-    }
+    val areaCm2 = areaPixelsValue?.let { viewModel.computeAreaCm2(it) }
 
     Column(
         modifier = modifier
@@ -57,14 +49,14 @@ fun MeasurementResultScreen(
     ) {
         Text(text = "Measurement Result", style = MaterialTheme.typography.headlineMedium)
 
-        if (calibration == null) {
+        if (calibrationFactor == null) {
             Text(
                 text = "No calibration found. Please calibrate before measurement.",
                 style = MaterialTheme.typography.bodyMedium
             )
         } else {
             Text(
-                text = "Calibration: 1 px = %.6f cm".format(calibration!!.cmPerPixel),
+                text = "Calibration: 1 px = %.6f cm".format(calibrationFactor),
                 style = MaterialTheme.typography.bodyMedium
             )
             OutlinedTextField(
@@ -91,18 +83,17 @@ fun MeasurementResultScreen(
 
         Button(
             onClick = {
-                val finalArea = areaCm2
-                if (finalArea == null) {
+                val finalPixels = areaPixelsValue
+                if (finalPixels == null) {
                     saveMessage = "Please enter a valid wound area to continue."
                     return@Button
                 }
-                scope.launch {
-                    assessmentDao.saveMeasurementResult(assessmentId = assessmentId, woundAreaCm2 = finalArea)
+                viewModel.saveMeasurement(assessmentId = assessmentId, areaPixels = finalPixels) {
                     saveMessage = "Measurement saved."
                     onNext()
                 }
             },
-            enabled = calibration != null,
+            enabled = calibrationFactor != null,
             modifier = Modifier.fillMaxWidth()
         ) {
             Text("Save & Continue")

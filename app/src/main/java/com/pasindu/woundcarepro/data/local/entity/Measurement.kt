@@ -15,13 +15,16 @@ import androidx.room.PrimaryKey
             onDelete = ForeignKey.CASCADE
         )
     ],
-    indices = [Index(value = ["assessmentId"])]
+    indices = [
+        Index(value = ["assessmentId"]),
+        Index(value = ["createdAt"])
+    ]
 )
 data class Measurement(
     @PrimaryKey
     val measurementId: String,
     val assessmentId: String,
     val areaPixels: Double,
-    val areaCm2: Double?,
+    val areaCm2: Double,
     val createdAt: Long
 )
