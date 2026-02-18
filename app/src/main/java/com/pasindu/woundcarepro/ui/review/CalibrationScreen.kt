@@ -14,24 +14,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.pasindu.woundcarepro.data.local.AssessmentDao
-import com.pasindu.woundcarepro.data.local.CalibrationParams
-import kotlinx.coroutines.launch
 
 @Composable
 fun CalibrationScreen(
-    assessmentId: Long,
-    assessmentDao: AssessmentDao,
+    assessmentId: String,
+    viewModel: CalibrationViewModel,
     onCalibrationSaved: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val scope = rememberCoroutineScope()
     var referenceLengthPixels by remember { mutableStateOf("") }
     var referenceLengthCm by remember { mutableStateOf("") }
     var status by remember { mutableStateOf("Enter reference object size for calibration") }
@@ -68,17 +63,9 @@ fun CalibrationScreen(
 
         Button(
             onClick = {
-                val cmPerPixel = cmValue!! / pixelsValue!!
-                scope.launch {
-                    assessmentDao.insertCalibrationParams(
-                        CalibrationParams(
-                            assessmentId = assessmentId,
-                            referenceLengthPixels = pixelsValue,
-                            referenceLengthCm = cmValue,
-                            cmPerPixel = cmPerPixel
-                        )
-                    )
-                    status = "Calibration saved (1 px = %.6f cm)".format(cmPerPixel)
+                val calibrationFactor = cmValue!! / pixelsValue!!
+                viewModel.saveCalibration(assessmentId, calibrationFactor) {
+                    status = "Calibration saved (1 px = %.6f cm)".format(calibrationFactor)
                     onCalibrationSaved()
                 }
             },

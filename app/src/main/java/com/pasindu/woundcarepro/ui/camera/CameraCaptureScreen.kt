@@ -27,7 +27,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,23 +35,19 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
-import com.pasindu.woundcarepro.data.local.AssessmentDao
-import com.pasindu.woundcarepro.data.local.ImageAsset
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlinx.coroutines.launch
 
 @Composable
 fun CameraCaptureScreen(
-    assessmentId: Long,
-    assessmentDao: AssessmentDao,
-    onPhotoCaptured: (Long) -> Unit,
+    assessmentId: String,
+    viewModel: CameraViewModel,
+    onPhotoCaptured: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val scope = rememberCoroutineScope()
 
     var hasCameraPermission by remember { mutableStateOf(context.hasCameraPermission()) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
@@ -147,16 +142,7 @@ fun CameraCaptureScreen(
                     cameraExecutor,
                     object : ImageCapture.OnImageSavedCallback {
                         override fun onImageSaved(outputFileResults: ImageCapture.OutputFileResults) {
-                            scope.launch {
-                                assessmentDao.insertImageAsset(
-                                    ImageAsset(
-                                        assessmentId = assessmentId,
-                                        filePath = imageFile.absolutePath,
-                                        lightingQc = "PENDING",
-                                        focusQc = "PENDING",
-                                        orientationQc = "PENDING"
-                                    )
-                                )
+                            viewModel.saveImagePath(assessmentId, imageFile.absolutePath) {
                                 statusMessage = "Saved: ${imageFile.name}"
                                 onPhotoCaptured(assessmentId)
                             }
@@ -190,7 +176,7 @@ private fun Context.hasCameraPermission(): Boolean {
         PackageManager.PERMISSION_GRANTED
 }
 
-private fun createImageFile(context: Context, assessmentId: Long): File {
+private fun createImageFile(context: Context, assessmentId: String): File {
     val imagesDir = File(context.filesDir, "assessment_images/$assessmentId")
     if (!imagesDir.exists()) {
         imagesDir.mkdirs()

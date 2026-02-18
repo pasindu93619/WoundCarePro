@@ -6,21 +6,24 @@ import androidx.room.Index
 import androidx.room.PrimaryKey
 
 @Entity(
-    tableName = "patient_assessments",
+    tableName = "assessments",
     foreignKeys = [
         ForeignKey(
             entity = Patient::class,
             parentColumns = ["patientId"],
             childColumns = ["patientId"],
-            onDelete = ForeignKey.CASCADE
+            onDelete = ForeignKey.SET_DEFAULT
         )
     ],
-    indices = [Index(value = ["patientId"])]
+    indices = [
+        Index(value = ["patientId"]),
+        Index(value = ["timestamp"])
+    ]
 )
 data class Assessment(
     @PrimaryKey
     val assessmentId: String,
-    val patientId: String,
+    val patientId: String = "anonymous",
     val timestamp: Long,
     val imagePath: String?,
     val outlineJson: String?,
