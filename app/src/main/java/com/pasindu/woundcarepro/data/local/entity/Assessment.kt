@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import com.pasindu.woundcarepro.data.local.DEFAULT_PATIENT_ID
 
 @Entity(
     tableName = "assessments",
@@ -23,7 +24,7 @@ import androidx.room.PrimaryKey
 data class Assessment(
     @PrimaryKey
     val assessmentId: String,
-    val patientId: String = "anonymous",
+    val patientId: String = DEFAULT_PATIENT_ID,
     val timestamp: Long,
     val imagePath: String?,
     val outlineJson: String?,

@@ -2,6 +2,7 @@ package com.pasindu.woundcarepro.ui.camera
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.pasindu.woundcarepro.data.local.DEFAULT_PATIENT_ID
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,7 +16,8 @@ class CameraViewModel @Inject constructor(
 ) : ViewModel() {
 
     fun createAssessment(
-        patientId: String = "anonymous",
+        // Temporary default patient until Patient selection screen is implemented.
+        patientId: String = DEFAULT_PATIENT_ID,
         onCreated: (String) -> Unit
     ) {
         val id = UUID.randomUUID().toString()
