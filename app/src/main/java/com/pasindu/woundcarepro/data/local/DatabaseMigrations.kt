@@ -72,6 +72,20 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_12_13: Migration = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val assessmentColumns = db.getColumnNames("assessments")
+            if (!assessmentColumns.contains("rectifiedImagePath")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN rectifiedImagePath TEXT")
+            }
+            if (!assessmentColumns.contains("markerCornersJson")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN markerCornersJson TEXT")
+            }
+            if (!assessmentColumns.contains("homographyJson")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN homographyJson TEXT")
+            }
+        }
+    }
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {

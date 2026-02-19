@@ -20,6 +20,13 @@ interface AssessmentRepository {
     suspend fun listRecent(): List<Assessment>
     suspend fun updateGuidanceMetrics(assessmentId: String, guidanceMetricsJson: String)
     suspend fun updateCaptureMetadata(assessmentId: String, imagePath: String, guidanceMetricsJson: String)
+    suspend fun updateMarkerCalibration(
+        assessmentId: String,
+        rectifiedImagePath: String,
+        markerCornersJson: String,
+        homographyJson: String,
+        calibrationFactor: Double
+    ): Assessment?
     suspend fun delete(assessmentId: String)
     suspend fun saveOutlineAndMeasurement(
         assessmentId: String,
@@ -51,6 +58,31 @@ class AssessmentRepositoryImpl(
         guidanceMetricsJson: String
     ) {
         assessmentDao.updateCaptureMetadata(assessmentId, imagePath, guidanceMetricsJson)
+    }
+
+    override suspend fun updateMarkerCalibration(
+        assessmentId: String,
+        rectifiedImagePath: String,
+        markerCornersJson: String,
+        homographyJson: String,
+        calibrationFactor: Double
+    ): Assessment? {
+        return database.withTransaction {
+            val current = assessmentDao.getById(assessmentId) ?: return@withTransaction null
+            val updated = current.copy(
+                rectifiedImagePath = rectifiedImagePath,
+                markerCornersJson = markerCornersJson,
+                homographyJson = homographyJson,
+                calibrationFactor = calibrationFactor
+            )
+            assessmentDao.upsert(updated)
+            val measurement = measurementDao.getByAssessmentId(assessmentId)
+            if (measurement != null) {
+                val areaCm2 = measurement.pixelArea * calibrationFactor * calibrationFactor
+                measurementDao.upsert(measurement.copy(areaCm2 = areaCm2, createdAtMillis = System.currentTimeMillis()))
+            }
+            updated
+        }
     }
 
     override suspend fun delete(assessmentId: String) = assessmentDao.delete(assessmentId)

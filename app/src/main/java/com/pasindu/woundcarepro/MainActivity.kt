@@ -38,6 +38,9 @@ import com.pasindu.woundcarepro.ui.history.HistoryViewModelFactory
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationViewModel
 import com.pasindu.woundcarepro.ui.review.CalibrationViewModelFactory
+import com.pasindu.woundcarepro.ui.review.MarkerCalibrationScreen
+import com.pasindu.woundcarepro.ui.review.MarkerCalibrationViewModel
+import com.pasindu.woundcarepro.ui.review.MarkerCalibrationViewModelFactory
 import com.pasindu.woundcarepro.ui.review.MeasurementResultScreen
 import com.pasindu.woundcarepro.ui.review.MeasurementViewModel
 import com.pasindu.woundcarepro.ui.review.MeasurementViewModelFactory
@@ -93,6 +96,8 @@ private object Destinations {
     const val CameraCaptureRoute = "camera_capture/{assessmentId}"
     const val Review = "review"
     const val ReviewRoute = "review/{assessmentId}"
+    const val MarkerCalibration = "marker_calibration"
+    const val MarkerCalibrationRoute = "marker_calibration/{assessmentId}"
     const val Calibration = "calibration"
     const val CalibrationRoute = "calibration/{assessmentId}"
     const val ManualOutline = "manual_outline"
@@ -113,6 +118,9 @@ private fun WoundCareNavGraph(
     val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository))
     val measurementViewModel: MeasurementViewModel = viewModel(
         factory = MeasurementViewModelFactory(assessmentRepository, measurementRepository)
+    )
+    val markerCalibrationViewModel: MarkerCalibrationViewModel = viewModel(
+        factory = MarkerCalibrationViewModelFactory(assessmentRepository)
     )
     val historyViewModel: HistoryViewModel = viewModel(
         factory = HistoryViewModelFactory(assessmentRepository, measurementRepository)
@@ -182,6 +190,27 @@ private fun WoundCareNavGraph(
                     navController.navigate(destination) {
                         launchSingleTop = true
                     }
+                },
+                onMarkerCalibration = {
+                    navController.navigate("${Destinations.MarkerCalibration}/$assessmentId") {
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+        composable(
+            route = Destinations.MarkerCalibrationRoute,
+            arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val assessmentId = backStackEntry.arguments?.getString("assessmentId") ?: return@composable
+            MarkerCalibrationScreen(
+                assessmentId = assessmentId,
+                viewModel = markerCalibrationViewModel,
+                onRectificationSaved = {
+                    navController.navigate("${Destinations.Review}/$assessmentId") {
+                        launchSingleTop = true
+                        popUpTo("${Destinations.MarkerCalibration}/$assessmentId") { inclusive = true }
+                    }
                 }
             )
         }
@@ -218,6 +247,11 @@ private fun WoundCareNavGraph(
                 viewModel = measurementViewModel,
                 onCalibrate = {
                     navController.navigate("${Destinations.Calibration}/$assessmentId") {
+                        launchSingleTop = true
+                    }
+                },
+                onMarkerCalibration = {
+                    navController.navigate("${Destinations.MarkerCalibration}/$assessmentId") {
                         launchSingleTop = true
                     }
                 },
