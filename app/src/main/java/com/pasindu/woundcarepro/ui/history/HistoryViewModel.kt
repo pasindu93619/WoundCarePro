@@ -29,7 +29,7 @@ class HistoryViewModel(
             _history.value = assessments.map { assessment ->
                 HistoryItem(
                     assessment = assessment,
-                    latestMeasurement = measurementRepository.getLatestByAssessmentId(assessment.assessmentId)
+                    latestMeasurement = measurementRepository.getByAssessmentId(assessment.assessmentId)
                 )
             }
         }

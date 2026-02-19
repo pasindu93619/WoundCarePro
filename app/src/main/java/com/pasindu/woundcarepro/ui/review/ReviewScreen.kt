@@ -15,7 +15,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -45,9 +48,31 @@ fun ReviewScreen(
 ) {
     val assessment by viewModel.assessment.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(assessmentId) {
         viewModel.loadAssessment(assessmentId)
+    }
+
+    LaunchedEffect(uiState.saveError) {
+        uiState.saveError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearTransientState()
+        }
+    }
+
+    LaunchedEffect(uiState.needsCalibration) {
+        if (uiState.needsCalibration) {
+            snackbarHostState.showSnackbar("Calibration is needed to compute cm² area")
+            viewModel.clearTransientState()
+        }
+    }
+
+    LaunchedEffect(uiState.saveSuccess) {
+        if (uiState.saveSuccess) {
+            onAccept()
+            viewModel.clearTransientState()
+        }
     }
 
     val statusMessage = if (assessment?.imagePath == null) {
@@ -67,6 +92,7 @@ fun ReviewScreen(
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        SnackbarHost(hostState = snackbarHostState)
         Text(text = "Review", style = MaterialTheme.typography.headlineMedium)
         Text(text = statusMessage, style = MaterialTheme.typography.bodyMedium)
 
@@ -146,39 +172,31 @@ fun ReviewScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f), enabled = !uiState.isSaving) {
                 Text("Undo")
             }
-            Button(onClick = { viewModel.clearPoints() }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { viewModel.clearPoints() }, modifier = Modifier.weight(1f), enabled = !uiState.isSaving) {
                 Text("Clear")
             }
             Button(
                 onClick = { viewModel.saveOutline(assessmentId) },
-                enabled = uiState.points.size >= 3,
+                enabled = uiState.points.size >= 3 && !uiState.isSaving,
                 modifier = Modifier.weight(1f)
             ) {
-                Text("Save Outline")
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.padding(2.dp))
+                } else {
+                    Text("Save Outline")
+                }
             }
         }
 
-        Row(
+        Button(
+            onClick = onRetake,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            enabled = !uiState.isSaving
         ) {
-            Button(
-                onClick = onRetake,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Retake")
-            }
-
-            Button(
-                onClick = onAccept,
-                enabled = uiState.pixelArea != null,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Continue")
-            }
+            Text("Retake")
         }
     }
 }

@@ -57,7 +57,13 @@ class MainActivity : ComponentActivity() {
             WoundCareProTheme {
                 val navController = rememberNavController()
                 val database = remember { DatabaseProvider.getDatabase(applicationContext) }
-                val assessmentRepository = remember { AssessmentRepositoryImpl(database.assessmentDao()) }
+                val assessmentRepository = remember {
+                    AssessmentRepositoryImpl(
+                        database = database,
+                        assessmentDao = database.assessmentDao(),
+                        measurementDao = database.measurementDao()
+                    )
+                }
                 val measurementRepository = remember { MeasurementRepositoryImpl(database.measurementDao()) }
 
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
