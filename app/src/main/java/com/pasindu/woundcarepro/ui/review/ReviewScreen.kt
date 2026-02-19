@@ -43,7 +43,7 @@ fun ReviewScreen(
     assessmentId: String,
     viewModel: ReviewViewModel,
     onRetake: () -> Unit,
-    onAccept: () -> Unit,
+    onNextAfterSave: (needsCalibration: Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val assessment by viewModel.assessment.collectAsState()
@@ -61,16 +61,9 @@ fun ReviewScreen(
         }
     }
 
-    LaunchedEffect(uiState.needsCalibration) {
-        if (uiState.needsCalibration) {
-            snackbarHostState.showSnackbar("Calibration needed for cm²")
-            viewModel.clearTransientState()
-        }
-    }
-
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
-            onAccept()
+            onNextAfterSave(uiState.needsCalibration)
             viewModel.clearTransientState()
         }
     }

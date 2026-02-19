@@ -16,10 +16,14 @@ class MeasurementViewModel(
     private val _areaPixels = MutableStateFlow<Double?>(null)
     val areaPixels: StateFlow<Double?> = _areaPixels
 
+    private val _areaCm2 = MutableStateFlow<Double?>(null)
+    val areaCm2: StateFlow<Double?> = _areaCm2
+
     fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
-            val assessment = assessmentRepository.getById(assessmentId) ?: return@launch
-            _areaPixels.value = assessment.pixelArea
+            val measurement = measurementRepository.getByAssessmentId(assessmentId)
+            _areaPixels.value = measurement?.areaPixels
+            _areaCm2.value = measurement?.areaCm2
         }
     }
 }
