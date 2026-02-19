@@ -31,7 +31,8 @@ interface AssessmentRepository {
 class AssessmentRepositoryImpl(
     private val database: WoundCareDatabase,
     private val assessmentDao: AssessmentDao,
-    private val measurementDao: MeasurementDao
+    private val measurementDao: MeasurementDao,
+    private val auditRepository: AuditRepository
 ) : AssessmentRepository {
     override suspend fun upsert(assessment: Assessment) = assessmentDao.upsert(assessment)
 
@@ -51,9 +52,25 @@ class AssessmentRepositoryImpl(
         guidanceMetricsJson: String
     ) {
         assessmentDao.updateCaptureMetadata(assessmentId, imagePath, guidanceMetricsJson)
+        val assessment = assessmentDao.getById(assessmentId)
+        auditRepository.logAudit(
+            action = "CAPTURE_PHOTO",
+            patientId = assessment?.patientId,
+            assessmentId = assessmentId,
+            metadataJson = guidanceMetricsJson
+        )
     }
 
-    override suspend fun delete(assessmentId: String) = assessmentDao.delete(assessmentId)
+    override suspend fun delete(assessmentId: String) {
+        val assessment = assessmentDao.getById(assessmentId)
+        assessmentDao.delete(assessmentId)
+        auditRepository.logAudit(
+            action = "DELETE",
+            patientId = assessment?.patientId,
+            assessmentId = assessmentId,
+            metadataJson = null
+        )
+    }
 
     override suspend fun saveOutlineAndMeasurement(
         assessmentId: String,
@@ -81,6 +98,12 @@ class AssessmentRepositoryImpl(
                 outlineJson = outlineJson
             )
             measurementDao.upsert(measurement)
+            auditRepository.logAudit(
+                action = "SAVE_OUTLINE",
+                patientId = assessment.patientId,
+                assessmentId = assessmentId,
+                metadataJson = "{\"pixelArea\":$pixelArea,\"areaCm2\":${areaCm2 ?: "null"}}"
+            )
             SaveOutlineResult.Success(updatedAssessment, measurement)
         }
     }

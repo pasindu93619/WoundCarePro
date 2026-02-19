@@ -9,6 +9,10 @@ import com.pasindu.woundcarepro.data.local.DatabaseMigrations
 import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
+import com.pasindu.woundcarepro.data.local.repository.AuditRepository
+import com.pasindu.woundcarepro.data.local.repository.AuditRepositoryImpl
+import com.pasindu.woundcarepro.data.local.repository.ConsentRepository
+import com.pasindu.woundcarepro.data.local.repository.ConsentRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -30,10 +34,12 @@ object AppModule {
             WoundCareDatabase::class.java,
             "wound-care.db"
         ).addMigrations(
-                DatabaseMigrations.MIGRATION_9_10,
-                DatabaseMigrations.MIGRATION_10_11,
-                DatabaseMigrations.MIGRATION_11_12
-            )
+            DatabaseMigrations.MIGRATION_9_10,
+            DatabaseMigrations.MIGRATION_10_11,
+            DatabaseMigrations.MIGRATION_11_12,
+            DatabaseMigrations.MIGRATION_12_13,
+            DatabaseMigrations.MIGRATION_13_14
+        )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -60,11 +66,27 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideAssessmentRepository(database: WoundCareDatabase): AssessmentRepository {
+    fun provideAuditRepository(database: WoundCareDatabase): AuditRepository {
+        return AuditRepositoryImpl(database.auditLogDao())
+    }
+
+    @Provides
+    @Singleton
+    fun provideConsentRepository(database: WoundCareDatabase): ConsentRepository {
+        return ConsentRepositoryImpl(database.consentDao())
+    }
+
+    @Provides
+    @Singleton
+    fun provideAssessmentRepository(
+        database: WoundCareDatabase,
+        auditRepository: AuditRepository
+    ): AssessmentRepository {
         return AssessmentRepositoryImpl(
             database = database,
             assessmentDao = database.assessmentDao(),
-            measurementDao = database.measurementDao()
+            measurementDao = database.measurementDao(),
+            auditRepository = auditRepository
         )
     }
 }

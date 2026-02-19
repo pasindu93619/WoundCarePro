@@ -156,6 +156,44 @@ object DatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_timestamp ON assessments(timestamp)")
         }
     }
+
+    val MIGRATION_13_14: Migration = object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS consents (
+                    consentId TEXT NOT NULL PRIMARY KEY,
+                    patientId TEXT NOT NULL,
+                    timestampMillis INTEGER NOT NULL,
+                    consentGiven INTEGER NOT NULL,
+                    consentType TEXT NOT NULL,
+                    note TEXT,
+                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_consents_patientId ON consents(patientId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_consents_timestampMillis ON consents(timestampMillis)")
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS audit_logs (
+                    auditId TEXT NOT NULL PRIMARY KEY,
+                    timestampMillis INTEGER NOT NULL,
+                    action TEXT NOT NULL,
+                    patientId TEXT,
+                    assessmentId TEXT,
+                    metadataJson TEXT
+                )
+                """.trimIndent()
+            )
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_timestampMillis ON audit_logs(timestampMillis)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_patientId ON audit_logs(patientId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_assessmentId ON audit_logs(assessmentId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_action ON audit_logs(action)")
+        }
+    }
+
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {
