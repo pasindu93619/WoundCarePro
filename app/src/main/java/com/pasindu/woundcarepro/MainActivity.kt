@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -26,7 +27,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.appcompat.app.AppCompatDelegate
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepositoryImpl
@@ -181,7 +181,6 @@ private fun WoundCareNavGraph(
                     }
                     navController.navigate(destination) {
                         launchSingleTop = true
-                        popUpTo("${Destinations.Review}/$assessmentId") { inclusive = true }
                     }
                 }
             )
@@ -217,6 +216,11 @@ private fun WoundCareNavGraph(
             MeasurementResultScreen(
                 assessmentId = assessmentId,
                 viewModel = measurementViewModel,
+                onCalibrate = {
+                    navController.navigate("${Destinations.Calibration}/$assessmentId") {
+                        launchSingleTop = true
+                    }
+                },
                 onNext = { navController.navigate(Destinations.History) }
             )
         }
