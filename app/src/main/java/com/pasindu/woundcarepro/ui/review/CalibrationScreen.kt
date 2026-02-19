@@ -189,7 +189,7 @@ fun CalibrationScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Reset points")
+            Text("Reset Points")
         }
 
         Button(
@@ -207,7 +207,7 @@ fun CalibrationScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Save calibration")
+            Text("Save Calibration")
         }
     }
 }
