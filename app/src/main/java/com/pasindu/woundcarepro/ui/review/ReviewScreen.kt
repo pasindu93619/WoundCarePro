@@ -68,6 +68,12 @@ fun ReviewScreen(
         }
     }
 
+    LaunchedEffect(uiState.needsCalibration) {
+        if (uiState.needsCalibration) {
+            snackbarHostState.showSnackbar("Calibration needed for cm²")
+        }
+    }
+
     val statusMessage = if (assessment?.imagePath == null) {
         "No captured image found. Please retake."
     } else {
