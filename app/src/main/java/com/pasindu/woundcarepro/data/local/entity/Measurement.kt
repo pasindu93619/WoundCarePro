@@ -16,15 +16,16 @@ import androidx.room.PrimaryKey
         )
     ],
     indices = [
-        Index(value = ["assessmentId"]),
-        Index(value = ["createdAt"])
+        Index(value = ["assessmentId"], unique = true),
+        Index(value = ["createdAtMillis"])
     ]
 )
 data class Measurement(
     @PrimaryKey
     val measurementId: String,
     val assessmentId: String,
-    val areaPixels: Double,
+    val createdAtMillis: Long,
+    val pixelArea: Double,
     val areaCm2: Double?,
-    val createdAt: Long
+    val outlineJson: String?
 )

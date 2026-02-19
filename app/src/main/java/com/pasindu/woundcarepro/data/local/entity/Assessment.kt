@@ -29,5 +29,6 @@ data class Assessment(
     val imagePath: String?,
     val outlineJson: String?,
     val pixelArea: Double?,
-    val calibrationFactor: Double?
+    val calibrationFactor: Double?,
+    val woundLocation: String? = null
 )

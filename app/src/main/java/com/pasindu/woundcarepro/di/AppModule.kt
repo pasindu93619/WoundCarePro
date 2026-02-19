@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pasindu.woundcarepro.data.local.DEFAULT_PATIENT_ID
+import com.pasindu.woundcarepro.data.local.DatabaseMigrations
 import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
@@ -28,7 +29,7 @@ object AppModule {
             context,
             WoundCareDatabase::class.java,
             "wound-care.db"
-        ).fallbackToDestructiveMigration()
+        ).addMigrations(DatabaseMigrations.MIGRATION_9_10)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -56,6 +57,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideAssessmentRepository(database: WoundCareDatabase): AssessmentRepository {
-        return AssessmentRepositoryImpl(database.assessmentDao())
+        return AssessmentRepositoryImpl(
+            database = database,
+            assessmentDao = database.assessmentDao(),
+            measurementDao = database.measurementDao()
+        )
     }
 }
