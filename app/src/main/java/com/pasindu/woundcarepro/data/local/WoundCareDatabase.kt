@@ -15,7 +15,7 @@ import com.pasindu.woundcarepro.data.local.entity.Patient
         Assessment::class,
         Measurement::class
     ],
-    version = 11,
+    version = 12,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {

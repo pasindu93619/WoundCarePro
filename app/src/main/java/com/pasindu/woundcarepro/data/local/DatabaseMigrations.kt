@@ -62,6 +62,16 @@ object DatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_patientId ON assessments(patientId)")
         }
     }
+
+    val MIGRATION_11_12: Migration = object : Migration(11, 12) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val assessmentColumns = db.getColumnNames("assessments")
+            if (!assessmentColumns.contains("guidanceMetricsJson")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN guidanceMetricsJson TEXT")
+            }
+        }
+    }
+
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {
