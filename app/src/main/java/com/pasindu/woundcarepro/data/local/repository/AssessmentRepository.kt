@@ -19,7 +19,7 @@ interface AssessmentRepository {
     suspend fun listByPatient(patientId: String): List<Assessment>
     suspend fun listRecent(): List<Assessment>
     suspend fun delete(assessmentId: String)
-    suspend fun saveFinalOutlineAndMeasurement(
+    suspend fun saveOutlineAndMeasurement(
         assessmentId: String,
         outlineJson: String,
         pixelArea: Double
@@ -41,7 +41,7 @@ class AssessmentRepositoryImpl(
 
     override suspend fun delete(assessmentId: String) = assessmentDao.delete(assessmentId)
 
-    override suspend fun saveFinalOutlineAndMeasurement(
+    override suspend fun saveOutlineAndMeasurement(
         assessmentId: String,
         outlineJson: String,
         pixelArea: Double
@@ -52,7 +52,7 @@ class AssessmentRepositoryImpl(
         return database.withTransaction {
             val areaCm2 = assessment.calibrationFactor
                 ?.takeIf { it > 0.0 }
-                ?.let { pixelArea * it * it }
+                ?.let { pixelArea * (it * it) }
 
             val updatedAssessment = assessment.copy(outlineJson = outlineJson, pixelArea = pixelArea)
             assessmentDao.upsert(updatedAssessment)
