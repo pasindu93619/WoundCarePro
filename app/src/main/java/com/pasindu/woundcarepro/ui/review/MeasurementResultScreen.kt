@@ -24,6 +24,7 @@ fun MeasurementResultScreen(
     modifier: Modifier = Modifier
 ) {
     val areaPixels by viewModel.areaPixels.collectAsState()
+    val areaCm2 by viewModel.areaCm2.collectAsState()
 
     LaunchedEffect(assessmentId) {
         viewModel.loadMeasurement(assessmentId)
@@ -50,10 +51,17 @@ fun MeasurementResultScreen(
             )
         }
 
-        Text(
-            text = "Calibration not applied yet (cm² will be added next milestone)",
-            style = MaterialTheme.typography.bodyMedium
-        )
+        if (areaCm2 != null) {
+            Text(
+                text = "Area (cm²): ${"%.2f".format(areaCm2)} cm²",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        } else {
+            Text(
+                text = "Calibration needed to compute cm²",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
 
         Button(
             onClick = onNext,

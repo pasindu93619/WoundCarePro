@@ -157,7 +157,11 @@ private fun WoundCareNavGraph(
             CameraCaptureScreen(
                 assessmentId = assessmentId,
                 viewModel = hiltViewModel<CameraViewModel>(),
-                onPhotoCaptured = { navController.navigate("${Destinations.Review}/$assessmentId") }
+                onPhotoCaptured = {
+                    navController.navigate("${Destinations.Review}/$assessmentId") {
+                        launchSingleTop = true
+                    }
+                }
             )
         }
         composable(
@@ -169,7 +173,17 @@ private fun WoundCareNavGraph(
                 assessmentId = assessmentId,
                 viewModel = reviewViewModel,
                 onRetake = { navController.popBackStack() },
-                onAccept = { navController.popBackStack() }
+                onNextAfterSave = { needsCalibration ->
+                    val destination = if (needsCalibration) {
+                        "${Destinations.Calibration}/$assessmentId"
+                    } else {
+                        "${Destinations.MeasurementResult}/$assessmentId"
+                    }
+                    navController.navigate(destination) {
+                        launchSingleTop = true
+                        popUpTo("${Destinations.Review}/$assessmentId") { inclusive = true }
+                    }
+                }
             )
         }
         composable(
@@ -181,7 +195,10 @@ private fun WoundCareNavGraph(
                 assessmentId = assessmentId,
                 viewModel = calibrationViewModel,
                 onCalibrationSaved = {
-                    navController.navigate("${Destinations.MeasurementResult}/$assessmentId")
+                    navController.navigate("${Destinations.MeasurementResult}/$assessmentId") {
+                        launchSingleTop = true
+                        popUpTo("${Destinations.Calibration}/$assessmentId") { inclusive = true }
+                    }
                 }
             )
         }
