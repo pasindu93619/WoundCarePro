@@ -26,6 +26,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,6 +38,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun ReviewScreen(
@@ -49,6 +51,7 @@ fun ReviewScreen(
     val assessment by viewModel.assessment.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(assessmentId) {
         viewModel.loadAssessment(assessmentId)
@@ -87,6 +90,7 @@ fun ReviewScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -178,7 +182,15 @@ fun ReviewScreen(
                 Text("Clear")
             }
             Button(
-                onClick = { viewModel.saveOutlineAndMeasurement(assessmentId) },
+                onClick = {
+                    if (isSelfIntersecting(uiState.points)) {
+                        coroutineScope.launch {
+                            snackbarHostState.showSnackbar("Outline crosses itself. Adjust points before saving.")
+                        }
+                    } else {
+                        viewModel.saveOutlineAndMeasurement(assessmentId)
+                    }
+                },
                 enabled = uiState.points.size >= 3 && !uiState.isSaving,
                 modifier = Modifier.weight(1f)
             ) {
@@ -269,4 +281,41 @@ private fun mapImagePointToCanvasOffset(
     val x = left + (point.x / imageWidth) * drawnW
     val y = top + (point.y / imageHeight) * drawnH
     return Offset(x, y)
+}
+
+private fun isSelfIntersecting(points: List<PointF>): Boolean {
+    if (points.size < 4) return false
+
+    for (i in points.indices) {
+        val a1 = points[i]
+        val a2 = points[(i + 1) % points.size]
+
+        for (j in i + 1 until points.size) {
+            if (kotlin.math.abs(i - j) <= 1) continue
+            if (i == 0 && j == points.lastIndex) continue
+
+            val b1 = points[j]
+            val b2 = points[(j + 1) % points.size]
+
+            if (segmentsIntersect(a1, a2, b1, b2)) {
+                return true
+            }
+        }
+    }
+
+    return false
+}
+
+private fun segmentsIntersect(p1: PointF, p2: PointF, p3: PointF, p4: PointF): Boolean {
+    val d1 = direction(p3, p4, p1)
+    val d2 = direction(p3, p4, p2)
+    val d3 = direction(p1, p2, p3)
+    val d4 = direction(p1, p2, p4)
+
+    return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+        ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+}
+
+private fun direction(a: PointF, b: PointF, c: PointF): Float {
+    return ((c.x - a.x) * (b.y - a.y)) - ((c.y - a.y) * (b.x - a.x))
 }

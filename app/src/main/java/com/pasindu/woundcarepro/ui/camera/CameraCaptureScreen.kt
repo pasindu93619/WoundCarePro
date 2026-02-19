@@ -59,10 +59,12 @@ fun CameraCaptureScreen(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val mainExecutor = remember(context) { ContextCompat.getMainExecutor(context) }
 
     var hasCameraPermission by remember { mutableStateOf(context.hasCameraPermission()) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var statusMessage by remember { mutableStateOf("Ready") }
+    var isCapturing by remember { mutableStateOf(false) }
     var latestQc by remember {
         mutableStateOf(
             QualityGateEvaluator.QcResult(
@@ -99,6 +101,7 @@ fun CameraCaptureScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
@@ -114,6 +117,7 @@ fun CameraCaptureScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Box(
@@ -145,16 +149,16 @@ fun CameraCaptureScreen(
                                             imageProxy = imageProxy
                                         )
                                     } catch (e: Exception) {
-                                        Log.e("CameraCaptureScreen", "QC analysis failed", e)
+                                        Log.e("CameraCaptureScreen", "QC analyzer failed", e)
                                     } finally {
                                         imageProxy.close()
                                     }
                                 }
                             }
-                        imageCapture = capture
 
                         try {
                             cameraProvider.unbindAll()
+                            imageCapture = capture
                             cameraProvider.bindToLifecycle(
                                 lifecycleOwner,
                                 CameraSelector.DEFAULT_BACK_CAMERA,
@@ -194,6 +198,7 @@ fun CameraCaptureScreen(
                 val qcResultSnapshot = latestQc
                 val qcStatus = if (qcResultSnapshot.overallPass) "PASS" else "WARN"
 
+                isCapturing = true
                 statusMessage = "Capturing..."
                 capture.takePicture(
                     outputOptions,
@@ -204,27 +209,40 @@ fun CameraCaptureScreen(
                                 timestampMillis = System.currentTimeMillis(),
                                 qcStatus = qcStatus
                             )
-                            viewModel.saveCaptureMetadata(
-                                assessmentId = assessmentId,
-                                imagePath = imageFile.absolutePath,
-                                guidanceMetricsJson = metricsJson
-                            ) {
-                                statusMessage = "Saved: ${imageFile.name}"
-                                onPhotoCaptured(assessmentId)
+                            mainExecutor.execute {
+                                viewModel.saveCaptureMetadata(
+                                    assessmentId = assessmentId,
+                                    imagePath = imageFile.absolutePath,
+                                    guidanceMetricsJson = metricsJson
+                                ) {
+                                    mainExecutor.execute {
+                                        isCapturing = false
+                                        statusMessage = "Saved: ${imageFile.name}"
+                                        onPhotoCaptured(assessmentId)
+                                    }
+                                }
                             }
                         }
 
                         override fun onError(exception: ImageCaptureException) {
                             Log.e("CameraCaptureScreen", "Image capture failed", exception)
-                            statusMessage = "Capture failed"
+                            mainExecutor.execute {
+                                isCapturing = false
+                                statusMessage = "Capture failed"
+                            }
                         }
                     }
                 )
             },
-            enabled = latestQc.overallPass,
+            enabled = latestQc.overallPass && !isCapturing,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (latestQc.overallPass) "Capture Image" else "Adjust framing for quality")
+            val label = when {
+                isCapturing -> "Capturing..."
+                latestQc.overallPass -> "Capture Image"
+                else -> "Adjust framing for quality"
+            }
+            Text(label)
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.pasindu.woundcarepro.ui.review
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.ui.unit.dp
 fun MeasurementResultScreen(
     assessmentId: String,
     viewModel: MeasurementViewModel,
+    onCalibrate: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -33,6 +35,7 @@ fun MeasurementResultScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -61,6 +64,12 @@ fun MeasurementResultScreen(
                 text = "Calibration needed to compute cm²",
                 style = MaterialTheme.typography.bodyMedium
             )
+            Button(
+                onClick = onCalibrate,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Calibrate")
+            }
         }
 
         Button(
