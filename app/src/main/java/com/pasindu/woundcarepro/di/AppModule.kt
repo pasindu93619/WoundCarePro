@@ -29,7 +29,7 @@ object AppModule {
             context,
             WoundCareDatabase::class.java,
             "wound-care.db"
-        ).addMigrations(DatabaseMigrations.MIGRATION_9_10)
+        ).addMigrations(DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11)
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)

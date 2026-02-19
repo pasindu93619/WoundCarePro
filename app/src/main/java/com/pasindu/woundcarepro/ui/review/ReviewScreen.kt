@@ -63,7 +63,7 @@ fun ReviewScreen(
 
     LaunchedEffect(uiState.needsCalibration) {
         if (uiState.needsCalibration) {
-            snackbarHostState.showSnackbar("Calibration is needed to compute cm² area")
+            snackbarHostState.showSnackbar("Calibration needed for cm²")
             viewModel.clearTransientState()
         }
     }
@@ -179,7 +179,7 @@ fun ReviewScreen(
                 Text("Clear")
             }
             Button(
-                onClick = { viewModel.saveOutline(assessmentId) },
+                onClick = { viewModel.saveOutlineAndMeasurement(assessmentId) },
                 enabled = uiState.points.size >= 3 && !uiState.isSaving,
                 modifier = Modifier.weight(1f)
             ) {

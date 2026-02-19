@@ -66,7 +66,7 @@ class ReviewViewModel(
         _uiState.value = _uiState.value.copy(saveError = null, saveSuccess = false, needsCalibration = false)
     }
 
-    fun saveOutline(assessmentId: String) {
+    fun saveOutlineAndMeasurement(assessmentId: String) {
         viewModelScope.launch {
             val points = _uiState.value.points
             if (points.size < 3) {
@@ -79,7 +79,7 @@ class ReviewViewModel(
             val area = PolygonAreaCalculator.calculateAreaPixels(points)
             val outlineJson = OutlineJsonConverter.toJson(WoundOutline(points = points))
 
-            when (val result = assessmentRepository.saveFinalOutlineAndMeasurement(assessmentId, outlineJson, area)) {
+            when (val result = assessmentRepository.saveOutlineAndMeasurement(assessmentId, outlineJson, area)) {
                 is SaveOutlineResult.Error -> {
                     _uiState.value = _uiState.value.copy(isSaving = false, saveError = result.message)
                 }

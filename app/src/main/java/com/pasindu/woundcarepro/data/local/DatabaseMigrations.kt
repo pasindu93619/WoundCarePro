@@ -44,4 +44,35 @@ object DatabaseMigrations {
             db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_patientId ON assessments(patientId)")
         }
     }
+
+    val MIGRATION_10_11: Migration = object : Migration(10, 11) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val measurementColumns = db.getColumnNames("measurements")
+            if (!measurementColumns.contains("createdAtMillis")) {
+                db.execSQL("ALTER TABLE measurements ADD COLUMN createdAtMillis INTEGER NOT NULL DEFAULT 0")
+            }
+            if (!measurementColumns.contains("pixelArea")) {
+                db.execSQL("ALTER TABLE measurements ADD COLUMN pixelArea REAL NOT NULL DEFAULT 0")
+            }
+            if (!measurementColumns.contains("areaCm2")) {
+                db.execSQL("ALTER TABLE measurements ADD COLUMN areaCm2 REAL")
+            }
+
+            db.execSQL("CREATE UNIQUE INDEX IF NOT EXISTS index_measurements_assessmentId ON measurements(assessmentId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_patientId ON assessments(patientId)")
+        }
+    }
+}
+
+private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {
+    query("PRAGMA table_info(`$tableName`)").use { cursor ->
+        val nameIndex = cursor.getColumnIndex("name")
+        val columns = mutableSetOf<String>()
+        while (cursor.moveToNext()) {
+            if (nameIndex >= 0) {
+                columns.add(cursor.getString(nameIndex))
+            }
+        }
+        return columns
+    }
 }
