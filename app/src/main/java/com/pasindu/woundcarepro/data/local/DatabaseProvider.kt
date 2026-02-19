@@ -13,8 +13,12 @@ object DatabaseProvider {
                 context.applicationContext,
                 WoundCareDatabase::class.java,
                 "wound-care.db"
-            ).addMigrations(DatabaseMigrations.MIGRATION_9_10, DatabaseMigrations.MIGRATION_10_11)
-                .build().also { instance = it }
+            ).addMigrations(
+                DatabaseMigrations.MIGRATION_9_10,
+                DatabaseMigrations.MIGRATION_10_11,
+                DatabaseMigrations.MIGRATION_11_12,
+                DatabaseMigrations.MIGRATION_12_13
+            ).build().also { instance = it }
         }
     }
 }

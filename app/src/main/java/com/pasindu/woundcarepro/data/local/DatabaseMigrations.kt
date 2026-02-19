@@ -72,6 +72,90 @@ object DatabaseMigrations {
         }
     }
 
+    val MIGRATION_12_13: Migration = object : Migration(12, 13) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS wounds (
+                    woundId TEXT NOT NULL PRIMARY KEY,
+                    patientId TEXT NOT NULL,
+                    location TEXT NOT NULL,
+                    createdAtMillis INTEGER NOT NULL,
+                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_wounds_patientId ON wounds(patientId)")
+
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO wounds(woundId, patientId, location, createdAtMillis)
+                SELECT
+                    'legacy-' || patientId,
+                    patientId,
+                    COALESCE(MAX(woundLocation), 'Unknown location'),
+                    MIN(timestamp)
+                FROM assessments
+                GROUP BY patientId
+                """.trimIndent()
+            )
+
+            db.execSQL(
+                """
+                CREATE TABLE IF NOT EXISTS assessments_new (
+                    assessmentId TEXT NOT NULL PRIMARY KEY,
+                    patientId TEXT NOT NULL,
+                    woundId TEXT NOT NULL,
+                    timestamp INTEGER NOT NULL,
+                    imagePath TEXT,
+                    outlineJson TEXT,
+                    pixelArea REAL,
+                    calibrationFactor REAL,
+                    woundLocation TEXT,
+                    guidanceMetricsJson TEXT,
+                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE SET DEFAULT,
+                    FOREIGN KEY(woundId) REFERENCES wounds(woundId) ON DELETE CASCADE
+                )
+                """.trimIndent()
+            )
+
+            db.execSQL(
+                """
+                INSERT INTO assessments_new(
+                    assessmentId,
+                    patientId,
+                    woundId,
+                    timestamp,
+                    imagePath,
+                    outlineJson,
+                    pixelArea,
+                    calibrationFactor,
+                    woundLocation,
+                    guidanceMetricsJson
+                )
+                SELECT
+                    assessmentId,
+                    patientId,
+                    'legacy-' || patientId,
+                    timestamp,
+                    imagePath,
+                    outlineJson,
+                    pixelArea,
+                    calibrationFactor,
+                    woundLocation,
+                    guidanceMetricsJson
+                FROM assessments
+                """.trimIndent()
+            )
+
+            db.execSQL("DROP TABLE assessments")
+            db.execSQL("ALTER TABLE assessments_new RENAME TO assessments")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_patientId ON assessments(patientId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_woundId ON assessments(woundId)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_timestamp ON assessments(timestamp)")
+        }
+    }
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {
