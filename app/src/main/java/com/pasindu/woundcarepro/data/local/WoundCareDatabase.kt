@@ -8,14 +8,16 @@ import com.pasindu.woundcarepro.data.local.dao.PatientDao
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.entity.Patient
+import com.pasindu.woundcarepro.data.local.entity.Wound
 
 @Database(
     entities = [
         Patient::class,
+        Wound::class,
         Assessment::class,
         Measurement::class
     ],
-    version = 12,
+    version = 13,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
