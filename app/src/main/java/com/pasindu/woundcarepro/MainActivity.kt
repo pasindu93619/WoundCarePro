@@ -54,27 +54,32 @@ class MainActivity : ComponentActivity() {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
         enableEdgeToEdge()
         setContent {
-            WoundCareProTheme {
-                val navController = rememberNavController()
-                val database = remember { DatabaseProvider.getDatabase(applicationContext) }
-                val assessmentRepository = remember {
-                    AssessmentRepositoryImpl(
-                        database = database,
-                        assessmentDao = database.assessmentDao(),
-                        measurementDao = database.measurementDao()
-                    )
-                }
-                val measurementRepository = remember { MeasurementRepositoryImpl(database.measurementDao()) }
+            WoundCareProApp(applicationContext = applicationContext)
+        }
+    }
+}
 
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    WoundCareNavGraph(
-                        navController = navController,
-                        assessmentRepository = assessmentRepository,
-                        measurementRepository = measurementRepository,
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
-            }
+@Composable
+private fun WoundCareProApp(applicationContext: android.content.Context) {
+    WoundCareProTheme {
+        val navController = rememberNavController()
+        val database = remember { DatabaseProvider.getDatabase(applicationContext) }
+        val assessmentRepository = remember {
+            AssessmentRepositoryImpl(
+                database = database,
+                assessmentDao = database.assessmentDao(),
+                measurementDao = database.measurementDao()
+            )
+        }
+        val measurementRepository = remember { MeasurementRepositoryImpl(database.measurementDao()) }
+
+        Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+            WoundCareNavGraph(
+                navController = navController,
+                assessmentRepository = assessmentRepository,
+                measurementRepository = measurementRepository,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
     }
 }
