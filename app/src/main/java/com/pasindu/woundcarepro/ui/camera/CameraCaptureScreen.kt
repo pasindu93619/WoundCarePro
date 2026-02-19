@@ -46,9 +46,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import java.io.File
+import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
-import kotlin.math.PI
 
 @Composable
 fun CameraCaptureScreen(
@@ -65,25 +65,11 @@ fun CameraCaptureScreen(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var statusMessage by remember { mutableStateOf("Ready") }
     var isCapturing by remember { mutableStateOf(false) }
-    var latestQc by remember {
-        mutableStateOf(
-            QualityGateEvaluator.QcResult(
-                meanLuma = 0.0,
-                glarePct = 0.0,
-                blurScore = 0.0,
-                pitchDeg = 0f,
-                rollDeg = 0f,
-                tiltPass = false,
-                lightPass = false,
-                glarePass = false,
-                blurPass = false,
-                overallPass = false
-            )
-        )
-    }
+    var latestQc by remember { mutableStateOf(QualityGateResult.empty()) }
 
     val cameraExecutor = rememberCameraExecutor()
     val sensorState = rememberTiltState()
+    val qualityGateEvaluator = remember { QualityGateEvaluator() }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -143,11 +129,12 @@ fun CameraCaptureScreen(
                             .also { analyzer ->
                                 analyzer.setAnalyzer(cameraExecutor) { imageProxy ->
                                     try {
-                                        latestQc = QualityGateEvaluator.evaluate(
+                                        val qcResult = qualityGateEvaluator.evaluate(
                                             pitchDeg = sensorState.pitchDeg,
                                             rollDeg = sensorState.rollDeg,
                                             imageProxy = imageProxy
                                         )
+                                        mainExecutor.execute { latestQc = qcResult }
                                     } catch (e: Exception) {
                                         Log.e("CameraCaptureScreen", "QC analyzer failed", e)
                                     } finally {
@@ -170,7 +157,7 @@ fun CameraCaptureScreen(
                             Log.e("CameraCaptureScreen", "Binding failed", exception)
                             statusMessage = "Camera initialization failed"
                         }
-                    }, ContextCompat.getMainExecutor(ctx))
+                    }, mainExecutor)
                     previewView
                 }
             )
@@ -209,17 +196,15 @@ fun CameraCaptureScreen(
                                 timestampMillis = System.currentTimeMillis(),
                                 qcStatus = qcStatus
                             )
-                            mainExecutor.execute {
-                                viewModel.saveCaptureMetadata(
-                                    assessmentId = assessmentId,
-                                    imagePath = imageFile.absolutePath,
-                                    guidanceMetricsJson = metricsJson
-                                ) {
-                                    mainExecutor.execute {
-                                        isCapturing = false
-                                        statusMessage = "Saved: ${imageFile.name}"
-                                        onPhotoCaptured(assessmentId)
-                                    }
+                            viewModel.saveCaptureMetadata(
+                                assessmentId = assessmentId,
+                                imagePath = imageFile.absolutePath,
+                                guidanceMetricsJson = metricsJson
+                            ) {
+                                mainExecutor.execute {
+                                    isCapturing = false
+                                    statusMessage = "Saved: ${imageFile.name}"
+                                    onPhotoCaptured(assessmentId)
                                 }
                             }
                         }
@@ -249,7 +234,7 @@ fun CameraCaptureScreen(
 
 @Composable
 private fun QcOverlay(
-    qcResult: QualityGateEvaluator.QcResult,
+    qcResult: QualityGateResult,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -319,8 +304,8 @@ private fun rememberTiltState(): TiltState {
                 override fun onSensorChanged(event: SensorEvent) {
                     SensorManager.getRotationMatrixFromVector(rotationMatrix, event.values)
                     SensorManager.getOrientation(rotationMatrix, orientation)
-                    val pitch = (orientation[1] * (180 / PI)).toFloat()
-                    val roll = (orientation[2] * (180 / PI)).toFloat()
+                    val pitch = Math.toDegrees(orientation[1].toDouble()).toFloat()
+                    val roll = Math.toDegrees(orientation[2].toDouble()).toFloat()
                     tiltState = TiltState(pitchDeg = pitch, rollDeg = roll)
                 }
 
@@ -357,5 +342,5 @@ private fun createImageFile(context: Context, assessmentId: String): File {
     return File(imagesDir, "IMG_${System.currentTimeMillis()}.jpg")
 }
 
-private fun Float.format2(): String = String.format(java.util.Locale.US, "%.2f", this)
-private fun Double.format2(): String = String.format(java.util.Locale.US, "%.2f", this)
+private fun Float.format2(): String = String.format(Locale.US, "%.2f", this)
+private fun Double.format2(): String = String.format(Locale.US, "%.2f", this)

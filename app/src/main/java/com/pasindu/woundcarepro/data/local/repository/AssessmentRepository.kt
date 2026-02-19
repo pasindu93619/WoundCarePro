@@ -18,6 +18,8 @@ interface AssessmentRepository {
     suspend fun getById(assessmentId: String): Assessment?
     suspend fun listByPatient(patientId: String): List<Assessment>
     suspend fun listRecent(): List<Assessment>
+    suspend fun updateGuidanceMetrics(assessmentId: String, guidanceMetricsJson: String)
+    suspend fun updateCaptureMetadata(assessmentId: String, imagePath: String, guidanceMetricsJson: String)
     suspend fun delete(assessmentId: String)
     suspend fun saveOutlineAndMeasurement(
         assessmentId: String,
@@ -38,6 +40,18 @@ class AssessmentRepositoryImpl(
     override suspend fun listByPatient(patientId: String): List<Assessment> = assessmentDao.listByPatient(patientId)
 
     override suspend fun listRecent(): List<Assessment> = assessmentDao.listRecent()
+
+    override suspend fun updateGuidanceMetrics(assessmentId: String, guidanceMetricsJson: String) {
+        assessmentDao.updateGuidanceMetrics(assessmentId, guidanceMetricsJson)
+    }
+
+    override suspend fun updateCaptureMetadata(
+        assessmentId: String,
+        imagePath: String,
+        guidanceMetricsJson: String
+    ) {
+        assessmentDao.updateCaptureMetadata(assessmentId, imagePath, guidanceMetricsJson)
+    }
 
     override suspend fun delete(assessmentId: String) = assessmentDao.delete(assessmentId)
 

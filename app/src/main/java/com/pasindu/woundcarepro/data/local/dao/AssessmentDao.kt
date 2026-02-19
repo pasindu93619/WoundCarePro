@@ -19,6 +19,14 @@ interface AssessmentDao {
     @Query("SELECT * FROM assessments ORDER BY timestamp DESC")
     suspend fun listRecent(): List<Assessment>
 
+    @Query("UPDATE assessments SET guidanceMetricsJson = :guidanceMetricsJson WHERE assessmentId = :assessmentId")
+    suspend fun updateGuidanceMetrics(assessmentId: String, guidanceMetricsJson: String)
+
+    @Query(
+        "UPDATE assessments SET imagePath = :imagePath, guidanceMetricsJson = :guidanceMetricsJson WHERE assessmentId = :assessmentId"
+    )
+    suspend fun updateCaptureMetadata(assessmentId: String, imagePath: String, guidanceMetricsJson: String)
+
     @Query("DELETE FROM assessments WHERE assessmentId = :assessmentId")
     suspend fun delete(assessmentId: String)
 }
