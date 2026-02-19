@@ -44,12 +44,10 @@ class CameraViewModel @Inject constructor(
         onSaved: () -> Unit = {}
     ) {
         viewModelScope.launch {
-            val current = assessmentRepository.getById(assessmentId) ?: return@launch
-            assessmentRepository.upsert(
-                current.copy(
-                    imagePath = imagePath,
-                    guidanceMetricsJson = guidanceMetricsJson
-                )
+            assessmentRepository.updateCaptureMetadata(
+                assessmentId = assessmentId,
+                imagePath = imagePath,
+                guidanceMetricsJson = guidanceMetricsJson
             )
             onSaved()
         }
