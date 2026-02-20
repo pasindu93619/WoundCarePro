@@ -23,7 +23,7 @@ class MeasurementViewModel(
         viewModelScope.launch {
             val measurement = measurementRepository.getByAssessmentId(assessmentId)
             if (measurement != null) {
-                _areaPixels.value = measurement.areaPixels
+                _areaPixels.value = measurement.pixelArea
                 _areaCm2.value = measurement.areaCm2
             } else {
                 val assessment = assessmentRepository.getById(assessmentId)
