@@ -2,11 +2,12 @@ package com.pasindu.woundcarepro.ui.camera
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.pasindu.woundcarepro.data.local.DEFAULT_PATIENT_ID
 import com.pasindu.woundcarepro.data.local.DEFAULT_WOUND_ID
 import com.pasindu.woundcarepro.data.local.entity.Assessment
+import com.pasindu.woundcarepro.data.local.entity.Patient
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.AuditRepository
+import com.pasindu.woundcarepro.data.local.repository.PatientRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.util.UUID
 import javax.inject.Inject
@@ -15,21 +16,30 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class CameraViewModel @Inject constructor(
     private val assessmentRepository: AssessmentRepository,
+    private val patientRepository: PatientRepository,
     private val auditRepository: AuditRepository
 ) : ViewModel() {
 
     fun createAssessment(
-        patientId: String = DEFAULT_PATIENT_ID,
         onCreated: (String, String) -> Unit
     ) {
-        val id = UUID.randomUUID().toString()
+        val patientId = UUID.randomUUID().toString()
+        val assessmentId = UUID.randomUUID().toString()
+        val now = System.currentTimeMillis()
         viewModelScope.launch {
+            patientRepository.upsert(
+                Patient(
+                    patientId = patientId,
+                    name = "Unknown",
+                    createdAt = now
+                )
+            )
             assessmentRepository.upsert(
                 Assessment(
-                    assessmentId = id,
+                    assessmentId = assessmentId,
                     patientId = patientId,
                     woundId = DEFAULT_WOUND_ID,
-                    timestamp = System.currentTimeMillis(),
+                    timestamp = now,
                     imagePath = null,
                     outlineJson = null,
                     pixelArea = null,
@@ -40,10 +50,10 @@ class CameraViewModel @Inject constructor(
             auditRepository.logAudit(
                 action = "CREATE_ASSESSMENT",
                 patientId = patientId,
-                assessmentId = id,
+                assessmentId = assessmentId,
                 metadataJson = null
             )
-            onCreated(id, patientId)
+            onCreated(assessmentId, patientId)
         }
     }
 
