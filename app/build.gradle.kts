@@ -65,6 +65,8 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
     implementation(libs.hilt.android)
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
