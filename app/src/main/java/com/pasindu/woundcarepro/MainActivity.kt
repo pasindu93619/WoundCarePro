@@ -126,6 +126,7 @@ private fun AppContent(applicationContext: android.content.Context) {
         AssessmentRepositoryImpl(
             database = database,
             assessmentDao = database.assessmentDao(),
+            patientDao = database.patientDao(),
             measurementDao = database.measurementDao(),
             auditRepository = auditRepository
         )

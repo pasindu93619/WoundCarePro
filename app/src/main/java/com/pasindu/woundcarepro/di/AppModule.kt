@@ -35,13 +35,16 @@ object AppModule {
             context,
             WoundCareDatabase::class.java,
             "wound-care.db"
-        ).addMigrations(
-            DatabaseMigrations.MIGRATION_9_10,
-            DatabaseMigrations.MIGRATION_10_11,
-            DatabaseMigrations.MIGRATION_11_12,
-            DatabaseMigrations.MIGRATION_12_13,
-            DatabaseMigrations.MIGRATION_13_14
         )
+            // DEV NOTE: after changing Room schema/migrations during development,
+            // clear app data or reinstall if you encounter migration/state issues.
+            .addMigrations(
+                DatabaseMigrations.MIGRATION_9_10,
+                DatabaseMigrations.MIGRATION_10_11,
+                DatabaseMigrations.MIGRATION_11_12,
+                DatabaseMigrations.MIGRATION_12_13,
+                DatabaseMigrations.MIGRATION_13_14
+            )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
@@ -94,6 +97,7 @@ object AppModule {
         return AssessmentRepositoryImpl(
             database = database,
             assessmentDao = database.assessmentDao(),
+            patientDao = database.patientDao(),
             measurementDao = database.measurementDao(),
             auditRepository = auditRepository
         )
