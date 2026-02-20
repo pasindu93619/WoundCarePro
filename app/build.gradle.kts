@@ -65,8 +65,8 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
     implementation(libs.hilt.android)
-    implementation("androidx.appcompat:appcompat:1.6.1")
 
+    implementation("androidx.compose.foundation:foundation")
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
@@ -76,4 +76,11 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
 }
