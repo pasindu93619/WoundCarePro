@@ -63,7 +63,8 @@ dependencies {
     implementation(libs.androidx.room.ktx)
     implementation(libs.google.gson)
     implementation(libs.hilt.android)
-    implementation("com.google.code.gson:gson:2.11.0")
+    implementation("androidx.appcompat:appcompat:1.6.1")
+
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)

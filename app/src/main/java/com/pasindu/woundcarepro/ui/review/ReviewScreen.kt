@@ -1,10 +1,7 @@
 package com.pasindu.woundcarepro.ui.review
 
 import android.graphics.BitmapFactory
-<<<<<<< HEAD
-=======
 import android.graphics.PointF
->>>>>>> main
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,9 +12,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -38,10 +33,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-<<<<<<< HEAD
-import com.pasindu.woundcarepro.measurement.OutlinePoint
-=======
->>>>>>> main
 
 @Composable
 fun ReviewScreen(
@@ -51,30 +42,21 @@ fun ReviewScreen(
     onAccept: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-<<<<<<< HEAD
-=======
     val assessment by viewModel.assessment.collectAsState()
->>>>>>> main
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(assessmentId) {
         viewModel.loadAssessment(assessmentId)
     }
 
-    val imagePath = uiState.assessment?.imagePath
-    val bitmap = imagePath?.let { path -> BitmapFactory.decodeFile(path)?.asImageBitmap() }
-    val statusMessage = if (imagePath == null) {
+    val statusMessage = if (assessment?.imagePath == null) {
         "No captured image found. Please retake."
     } else {
-<<<<<<< HEAD
-        "Tap to mark wound border points"
-=======
         "Tap on wound border to add polygon points"
     }
 
     val bitmap = assessment?.imagePath?.let { path ->
         BitmapFactory.decodeFile(path)?.asImageBitmap()
->>>>>>> main
     }
 
     Column(
@@ -88,34 +70,14 @@ fun ReviewScreen(
         Text(text = statusMessage, style = MaterialTheme.typography.bodyMedium)
 
         if (bitmap != null) {
-<<<<<<< HEAD
-            var containerSize = IntSize.Zero
-=======
             var canvasSize by remember { mutableStateOf(IntSize.Zero) }
             val imageWidth = bitmap.width.toFloat()
             val imageHeight = bitmap.height.toFloat()
->>>>>>> main
 
             Box(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-<<<<<<< HEAD
-                    .heightIn(min = 260.dp)
-                    .background(Color.Black)
-                    .onSizeChanged { containerSize = it }
-                    .pointerInput(bitmap, containerSize) {
-                        detectTapGestures { tapOffset ->
-                            val mapped = mapTapToImagePoint(
-                                tap = tapOffset,
-                                containerSize = containerSize,
-                                imageWidth = bitmap.width,
-                                imageHeight = bitmap.height
-                            )
-                            if (mapped != null) {
-                                viewModel.addPoint(mapped)
-                            }
-=======
                     .background(Color.Black)
                     .onSizeChanged { canvasSize = it }
                     .pointerInput(bitmap, uiState.points) {
@@ -127,7 +89,6 @@ fun ReviewScreen(
                                 imageHeight = imageHeight
                             ) ?: return@detectTapGestures
                             viewModel.addPoint(mapped)
->>>>>>> main
                         }
                     }
             ) {
@@ -137,98 +98,6 @@ fun ReviewScreen(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
-<<<<<<< HEAD
-
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val displayPoints = uiState.points.mapNotNull { point ->
-                        mapImagePointToCanvasOffset(
-                            point = point,
-                            canvasWidth = size.width,
-                            canvasHeight = size.height,
-                            imageWidth = bitmap.width.toFloat(),
-                            imageHeight = bitmap.height.toFloat()
-                        )
-                    }
-
-                    displayPoints.forEachIndexed { index, point ->
-                        drawCircle(
-                            color = Color.Yellow,
-                            radius = 8f,
-                            center = point
-                        )
-                        if (index > 0) {
-                            drawLine(
-                                color = Color.Red,
-                                start = displayPoints[index - 1],
-                                end = point,
-                                strokeWidth = 4f
-                            )
-                        }
-                    }
-                    if (uiState.pixelArea != null && displayPoints.size >= 3) {
-                        drawLine(
-                            color = Color.Red,
-                            start = displayPoints.last(),
-                            end = displayPoints.first(),
-                            strokeWidth = 4f
-                        )
-                    }
-                }
-            }
-        }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Button(
-                onClick = { viewModel.undoLastPoint() },
-                enabled = uiState.points.isNotEmpty(),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Undo")
-            }
-            Button(
-                onClick = { viewModel.clearPoints() },
-                enabled = uiState.points.isNotEmpty(),
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Clear")
-            }
-        }
-
-        Button(
-            onClick = {
-                viewModel.saveOutline(assessmentId = assessmentId)
-            },
-            enabled = uiState.points.size >= 3 && uiState.assessment?.imagePath != null,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Save Outline")
-        }
-
-        uiState.pixelArea?.let { area ->
-            Text(
-                text = "Saved pixel area: %.2f px²".format(area),
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-
-
-        Button(
-            onClick = onAccept,
-            enabled = uiState.pixelArea != null,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Continue")
-        }
-
-        Button(
-            onClick = onRetake,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Retake")
-=======
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
                     val mappedPoints = uiState.points.mapNotNull { point ->
@@ -309,88 +178,10 @@ fun ReviewScreen(
             ) {
                 Text("Continue")
             }
->>>>>>> main
         }
     }
 }
 
-<<<<<<< HEAD
-private fun mapTapToImagePoint(
-    tap: Offset,
-    containerSize: IntSize,
-    imageWidth: Int,
-    imageHeight: Int
-): OutlinePoint? {
-    if (containerSize.width == 0 || containerSize.height == 0) return null
-
-    val containerWidth = containerSize.width.toFloat()
-    val containerHeight = containerSize.height.toFloat()
-    val imageAspect = imageWidth.toFloat() / imageHeight.toFloat()
-    val containerAspect = containerWidth / containerHeight
-
-    val displayedWidth: Float
-    val displayedHeight: Float
-    val offsetX: Float
-    val offsetY: Float
-
-    if (imageAspect > containerAspect) {
-        displayedWidth = containerWidth
-        displayedHeight = displayedWidth / imageAspect
-        offsetX = 0f
-        offsetY = (containerHeight - displayedHeight) / 2f
-    } else {
-        displayedHeight = containerHeight
-        displayedWidth = displayedHeight * imageAspect
-        offsetX = (containerWidth - displayedWidth) / 2f
-        offsetY = 0f
-    }
-
-    if (tap.x !in offsetX..(offsetX + displayedWidth) || tap.y !in offsetY..(offsetY + displayedHeight)) {
-        return null
-    }
-
-    val normalizedX = (tap.x - offsetX) / displayedWidth
-    val normalizedY = (tap.y - offsetY) / displayedHeight
-
-    return OutlinePoint(
-        x = normalizedX * imageWidth,
-        y = normalizedY * imageHeight
-    )
-}
-
-private fun mapImagePointToCanvasOffset(
-    point: OutlinePoint,
-    canvasWidth: Float,
-    canvasHeight: Float,
-    imageWidth: Float,
-    imageHeight: Float
-): Offset? {
-    if (canvasWidth == 0f || canvasHeight == 0f || imageWidth == 0f || imageHeight == 0f) return null
-
-    val imageAspect = imageWidth / imageHeight
-    val canvasAspect = canvasWidth / canvasHeight
-
-    val displayedWidth: Float
-    val displayedHeight: Float
-    val offsetX: Float
-    val offsetY: Float
-
-    if (imageAspect > canvasAspect) {
-        displayedWidth = canvasWidth
-        displayedHeight = displayedWidth / imageAspect
-        offsetX = 0f
-        offsetY = (canvasHeight - displayedHeight) / 2f
-    } else {
-        displayedHeight = canvasHeight
-        displayedWidth = displayedHeight * imageAspect
-        offsetX = (canvasWidth - displayedWidth) / 2f
-        offsetY = 0f
-    }
-
-    val x = offsetX + (point.x / imageWidth) * displayedWidth
-    val y = offsetY + (point.y / imageHeight) * displayedHeight
-
-=======
 private fun mapCanvasTapToImagePoint(
     tap: Offset,
     canvasSize: IntSize,
@@ -459,6 +250,5 @@ private fun mapImagePointToCanvasOffset(
 
     val x = left + (point.x / imageWidth) * drawnW
     val y = top + (point.y / imageHeight) * drawnH
->>>>>>> main
     return Offset(x, y)
 }

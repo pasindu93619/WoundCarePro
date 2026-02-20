@@ -1,22 +1,7 @@
 package com.pasindu.woundcarepro.measurement
 
-<<<<<<< HEAD
-import com.google.gson.Gson
-import com.google.gson.JsonSyntaxException
-import kotlin.math.abs
-
-data class OutlinePoint(
-    val x: Float,
-    val y: Float
-)
-
-data class WoundOutline(
-    val points: List<OutlinePoint>
-)
-=======
 import android.graphics.PointF
 import kotlin.math.abs
->>>>>>> main
 
 object PolygonAreaCalculator {
     fun calculateAreaPixels(points: List<PointF>): Double {
@@ -31,24 +16,3 @@ object PolygonAreaCalculator {
         return abs(sum) / 2.0
     }
 }
-<<<<<<< HEAD
-
-object OutlineJsonConverter {
-    private val gson = Gson()
-
-    fun toJson(points: List<OutlinePoint>): String {
-        return gson.toJson(WoundOutline(points = points))
-    }
-
-    fun fromJson(json: String?): List<OutlinePoint> {
-        if (json.isNullOrBlank()) return emptyList()
-
-        return try {
-            gson.fromJson(json, WoundOutline::class.java)?.points.orEmpty()
-        } catch (_: JsonSyntaxException) {
-            emptyList()
-        }
-    }
-}
-=======
->>>>>>> main
