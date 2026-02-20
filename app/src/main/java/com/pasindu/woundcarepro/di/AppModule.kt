@@ -13,6 +13,8 @@ import com.pasindu.woundcarepro.data.local.repository.AuditRepository
 import com.pasindu.woundcarepro.data.local.repository.AuditRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.ConsentRepository
 import com.pasindu.woundcarepro.data.local.repository.ConsentRepositoryImpl
+import com.pasindu.woundcarepro.data.local.repository.PatientRepository
+import com.pasindu.woundcarepro.data.local.repository.PatientRepositoryImpl
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -68,6 +70,13 @@ object AppModule {
     @Singleton
     fun provideAuditRepository(database: WoundCareDatabase): AuditRepository {
         return AuditRepositoryImpl(database.auditLogDao())
+    }
+
+
+    @Provides
+    @Singleton
+    fun providePatientRepository(database: WoundCareDatabase): PatientRepository {
+        return PatientRepositoryImpl(database.patientDao())
     }
 
     @Provides
