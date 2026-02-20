@@ -55,30 +55,30 @@ fun CalibrationScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    var startPoint by remember { mutableStateOf<PointF?>(null) }
-    var endPoint by remember { mutableStateOf<PointF?>(null) }
-    var realLengthCmInput by remember { mutableStateOf("") }
-    var canvasSize by remember { mutableStateOf(IntSize.Zero) }
+    var firstPoint by remember { mutableStateOf<PointF?>(null) }
+    var secondPoint by remember { mutableStateOf<PointF?>(null) }
+    var realLengthInput by remember { mutableStateOf("") }
+    var containerSize by remember { mutableStateOf(IntSize.Zero) }
 
     LaunchedEffect(assessmentId) {
         viewModel.loadAssessment(assessmentId)
     }
 
-    val bitmap = assessment?.imagePath?.let { path ->
+    val imageBitmap = assessment?.imagePath?.let { path ->
         BitmapFactory.decodeFile(path)?.asImageBitmap()
     }
 
-    val pixelDistance = if (startPoint != null && endPoint != null) {
+    val pixelDistance = if (firstPoint != null && secondPoint != null) {
         hypot(
-            (endPoint!!.x - startPoint!!.x).toDouble(),
-            (endPoint!!.y - startPoint!!.y).toDouble()
+            (secondPoint!!.x - firstPoint!!.x).toDouble(),
+            (secondPoint!!.y - firstPoint!!.y).toDouble()
         )
     } else {
         0.0
     }
 
-    val realLengthCm = realLengthCmInput.toDoubleOrNull()
-    val calibrationFactor = if (pixelDistance > 0.0 && (realLengthCm ?: 0.0) > 0.0) {
+    val realLengthCm = realLengthInput.toDoubleOrNull()
+    val factor = if (pixelDistance > 0.0 && (realLengthCm ?: 0.0) > 0.0) {
         realLengthCm!! / pixelDistance
     } else {
         null
@@ -92,50 +92,54 @@ fun CalibrationScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         SnackbarHost(hostState = snackbarHostState)
-        Text(text = "Calibration", style = MaterialTheme.typography.headlineMedium)
 
-        if (bitmap != null) {
-            val imageWidth = bitmap.width.toFloat()
-            val imageHeight = bitmap.height.toFloat()
+        Text(
+            text = "Calibration",
+            style = MaterialTheme.typography.headlineMedium
+        )
+
+        if (imageBitmap != null) {
+            val imageWidth = imageBitmap.width.toFloat()
+            val imageHeight = imageBitmap.height.toFloat()
 
             Box(
                 modifier = Modifier
-                    .weight(1f)
                     .fillMaxWidth()
+                    .weight(1f)
                     .background(Color.Black)
-                    .onSizeChanged { canvasSize = it }
-                    .pointerInput(bitmap, canvasSize, startPoint, endPoint) {
+                    .onSizeChanged { containerSize = it }
+                    .pointerInput(imageBitmap, containerSize, firstPoint, secondPoint) {
                         detectTapGestures { tapOffset ->
-                            val mapped = mapCanvasTapToImagePoint(
+                            val imagePoint = mapCanvasTapToImagePoint(
                                 tap = tapOffset,
-                                canvasSize = canvasSize,
+                                canvasSize = containerSize,
                                 imageWidth = imageWidth,
                                 imageHeight = imageHeight
                             ) ?: return@detectTapGestures
 
                             when {
-                                startPoint == null -> startPoint = mapped
-                                endPoint == null -> endPoint = mapped
+                                firstPoint == null -> firstPoint = imagePoint
+                                secondPoint == null -> secondPoint = imagePoint
                                 else -> {
-                                    startPoint = mapped
-                                    endPoint = null
+                                    firstPoint = imagePoint
+                                    secondPoint = null
                                 }
                             }
                         }
                     }
             ) {
                 Image(
-                    bitmap = bitmap,
-                    contentDescription = "Captured wound photo",
+                    bitmap = imageBitmap,
+                    contentDescription = "Captured wound image",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
 
                 Canvas(modifier = Modifier.fillMaxSize()) {
-                    val startOffset = startPoint?.let {
+                    val startOffset = firstPoint?.let {
                         mapImagePointToCanvasOffset(it, size, imageWidth, imageHeight)
                     }
-                    val endOffset = endPoint?.let {
+                    val endOffset = secondPoint?.let {
                         mapImagePointToCanvasOffset(it, size, imageWidth, imageHeight)
                     }
 
@@ -159,12 +163,12 @@ fun CalibrationScreen(
                 }
             }
         } else {
-            Text(text = "No captured image found.")
+            Text(text = "No image available for calibration.")
         }
 
         OutlinedTextField(
-            value = realLengthCmInput,
-            onValueChange = { realLengthCmInput = it },
+            value = realLengthInput,
+            onValueChange = { realLengthInput = it },
             label = { Text("Real length (cm)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             modifier = Modifier.fillMaxWidth()
@@ -175,17 +179,17 @@ fun CalibrationScreen(
             style = MaterialTheme.typography.bodyMedium
         )
 
-        if (calibrationFactor != null) {
+        if (factor != null) {
             Text(
-                text = "Calibration factor: ${String.format("%.6f", calibrationFactor)} cm/px",
+                text = "Calibration factor: ${String.format("%.6f", factor)} cm/px",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
 
         Button(
             onClick = {
-                startPoint = null
-                endPoint = null
+                firstPoint = null
+                secondPoint = null
             },
             modifier = Modifier.fillMaxWidth()
         ) {
@@ -200,8 +204,9 @@ fun CalibrationScreen(
                     }
                     return@Button
                 }
-                val factor = realLengthCm!! / pixelDistance
-                viewModel.saveCalibration(assessmentId, factor) {
+
+                val calibrationFactor = realLengthCm!! / pixelDistance
+                viewModel.saveCalibration(assessmentId, calibrationFactor) {
                     onCalibrationSaved()
                 }
             },
@@ -220,34 +225,39 @@ private fun mapCanvasTapToImagePoint(
 ): PointF? {
     if (canvasSize.width == 0 || canvasSize.height == 0) return null
 
-    val canvasW = canvasSize.width.toFloat()
-    val canvasH = canvasSize.height.toFloat()
+    val canvasWidth = canvasSize.width.toFloat()
+    val canvasHeight = canvasSize.height.toFloat()
     val imageAspect = imageWidth / imageHeight
-    val canvasAspect = canvasW / canvasH
+    val canvasAspect = canvasWidth / canvasHeight
 
-    val drawnW: Float
-    val drawnH: Float
+    val drawnWidth: Float
+    val drawnHeight: Float
     val left: Float
     val top: Float
 
     if (imageAspect > canvasAspect) {
-        drawnW = canvasW
-        drawnH = canvasW / imageAspect
+        drawnWidth = canvasWidth
+        drawnHeight = canvasWidth / imageAspect
         left = 0f
-        top = (canvasH - drawnH) / 2f
+        top = (canvasHeight - drawnHeight) / 2f
     } else {
-        drawnH = canvasH
-        drawnW = canvasH * imageAspect
+        drawnHeight = canvasHeight
+        drawnWidth = canvasHeight * imageAspect
         top = 0f
-        left = (canvasW - drawnW) / 2f
+        left = (canvasWidth - drawnWidth) / 2f
     }
 
-    if (tap.x < left || tap.x > left + drawnW || tap.y < top || tap.y > top + drawnH) return null
+    if (tap.x < left || tap.x > left + drawnWidth || tap.y < top || tap.y > top + drawnHeight) {
+        return null
+    }
 
-    val normalizedX = (tap.x - left) / drawnW
-    val normalizedY = (tap.y - top) / drawnH
+    val normalizedX = (tap.x - left) / drawnWidth
+    val normalizedY = (tap.y - top) / drawnHeight
 
-    return PointF(normalizedX * imageWidth, normalizedY * imageHeight)
+    return PointF(
+        normalizedX * imageWidth,
+        normalizedY * imageHeight
+    )
 }
 
 private fun mapImagePointToCanvasOffset(
@@ -261,24 +271,24 @@ private fun mapImagePointToCanvasOffset(
     val imageAspect = imageWidth / imageHeight
     val canvasAspect = canvasSize.width / canvasSize.height
 
-    val drawnW: Float
-    val drawnH: Float
+    val drawnWidth: Float
+    val drawnHeight: Float
     val left: Float
     val top: Float
 
     if (imageAspect > canvasAspect) {
-        drawnW = canvasSize.width
-        drawnH = canvasSize.width / imageAspect
+        drawnWidth = canvasSize.width
+        drawnHeight = canvasSize.width / imageAspect
         left = 0f
-        top = (canvasSize.height - drawnH) / 2f
+        top = (canvasSize.height - drawnHeight) / 2f
     } else {
-        drawnH = canvasSize.height
-        drawnW = canvasSize.height * imageAspect
+        drawnHeight = canvasSize.height
+        drawnWidth = canvasSize.height * imageAspect
         top = 0f
-        left = (canvasSize.width - drawnW) / 2f
+        left = (canvasSize.width - drawnWidth) / 2f
     }
 
-    val x = left + (point.x / imageWidth) * drawnW
-    val y = top + (point.y / imageHeight) * drawnH
+    val x = left + (point.x / imageWidth) * drawnWidth
+    val y = top + (point.y / imageHeight) * drawnHeight
     return Offset(x, y)
 }
