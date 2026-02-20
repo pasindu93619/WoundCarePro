@@ -4,8 +4,10 @@ import androidx.room.withTransaction
 import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.AssessmentDao
 import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
+import com.pasindu.woundcarepro.data.local.dao.PatientDao
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
+import com.pasindu.woundcarepro.data.local.entity.Patient
 import java.util.UUID
 
 sealed interface SaveOutlineResult {
@@ -15,6 +17,7 @@ sealed interface SaveOutlineResult {
 
 interface AssessmentRepository {
     suspend fun upsert(assessment: Assessment)
+    suspend fun createAssessment(selectedPatientId: String? = null): Assessment
     suspend fun getById(assessmentId: String): Assessment?
     suspend fun listByPatient(patientId: String): List<Assessment>
     suspend fun listRecent(): List<Assessment>
@@ -31,10 +34,38 @@ interface AssessmentRepository {
 class AssessmentRepositoryImpl(
     private val database: WoundCareDatabase,
     private val assessmentDao: AssessmentDao,
+    private val patientDao: PatientDao,
     private val measurementDao: MeasurementDao,
     private val auditRepository: AuditRepository
 ) : AssessmentRepository {
     override suspend fun upsert(assessment: Assessment) = assessmentDao.upsert(assessment)
+
+    override suspend fun createAssessment(selectedPatientId: String?): Assessment {
+        val now = System.currentTimeMillis()
+        val patientId = selectedPatientId ?: UUID.randomUUID().toString()
+        val assessment = Assessment(
+            assessmentId = UUID.randomUUID().toString(),
+            patientId = patientId,
+            timestamp = now,
+            imagePath = null,
+            outlineJson = null,
+            pixelArea = null,
+            calibrationFactor = null,
+            guidanceMetricsJson = null
+        )
+
+        database.withTransaction {
+            val patient = patientDao.getById(patientId) ?: Patient(
+                patientId = patientId,
+                name = "Unknown",
+                createdAt = now
+            )
+            patientDao.upsert(patient)
+            assessmentDao.upsert(assessment)
+        }
+
+        return assessment
+    }
 
     override suspend fun getById(assessmentId: String): Assessment? = assessmentDao.getById(assessmentId)
 
