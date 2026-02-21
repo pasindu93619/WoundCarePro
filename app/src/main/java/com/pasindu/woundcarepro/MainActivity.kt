@@ -51,12 +51,7 @@ import com.pasindu.woundcarepro.security.AppLockManager
 import com.pasindu.woundcarepro.security.LockGateState
 import com.pasindu.woundcarepro.security.UnlockResult
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
-import com.pasindu.woundcarepro.ui.camera.CameraViewModel
-import com.pasindu.woundcarepro.ui.camera.ConsentViewModel
-import com.pasindu.woundcarepro.ui.camera.ConsentViewModelFactory
-import com.pasindu.woundcarepro.ui.history.HistoryScreen
-import com.pasindu.woundcarepro.ui.history.HistoryViewModel
-import com.pasindu.woundcarepro.ui.history.HistoryViewModelFactory
+import com.pasindu.woundcarepro.ui.export.ExportScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationViewModel
 import com.pasindu.woundcarepro.ui.review.CalibrationViewModelFactory
@@ -368,9 +363,12 @@ private fun WoundCareNavGraph(
         }
         composable(Destinations.Export) {
             ExportScreen(
-                onExportCsv = { scope.launch { auditRepository.logAudit(action = "EXPORT_CSV") } },
-                onExportPdf = { scope.launch { auditRepository.logAudit(action = "EXPORT_PDF") } },
-                onNext = { navController.navigate(Destinations.Home) }
+                assessmentDao = assessmentDao,
+                onBackHome = {
+                    navController.navigate(Destinations.Home) {
+                        popUpTo(Destinations.Home) { inclusive = true }
+                    }
+                }
             )
         }
     }
