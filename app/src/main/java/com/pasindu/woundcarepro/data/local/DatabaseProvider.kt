@@ -18,18 +18,29 @@ object DatabaseProvider {
             ).addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
+                    seedDefaultRows(db)
+                }
+
+                override fun onOpen(db: SupportSQLiteDatabase) {
+                    super.onOpen(db)
+                    seedDefaultRows(db)
+                }
+
+                private fun seedDefaultRows(db: SupportSQLiteDatabase) {
                     val now = System.currentTimeMillis()
                     db.execSQL(
                         """
                         INSERT OR IGNORE INTO patients (patientId, name, createdAt)
-                        VALUES ('anonymous', 'Anonymous', $now)
-                        """.trimIndent()
+                        VALUES (?, ?, ?)
+                        """.trimIndent(),
+                        arrayOf(DEFAULT_PATIENT_ID, "Anonymous Patient", 0L)
                     )
                     db.execSQL(
                         """
                         INSERT OR IGNORE INTO wounds (woundId, patientId, location, createdAtMillis)
-                        VALUES ('unspecified', 'anonymous', 'Unspecified', $now)
-                        """.trimIndent()
+                        VALUES (?, ?, ?, ?)
+                        """.trimIndent(),
+                        arrayOf(DEFAULT_WOUND_ID, DEFAULT_PATIENT_ID, "Unspecified", now)
                     )
                 }
             }).addMigrations(
@@ -37,7 +48,8 @@ object DatabaseProvider {
                 DatabaseMigrations.MIGRATION_10_11,
                 DatabaseMigrations.MIGRATION_11_12,
                 DatabaseMigrations.MIGRATION_12_13,
-                DatabaseMigrations.MIGRATION_13_14
+                DatabaseMigrations.MIGRATION_13_14,
+                DatabaseMigrations.MIGRATION_14_15
             ).build().also { instance = it }
         }
     }

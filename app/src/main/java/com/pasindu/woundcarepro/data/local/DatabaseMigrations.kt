@@ -194,6 +194,35 @@ object DatabaseMigrations {
         }
     }
 
+
+    val MIGRATION_14_15: Migration = object : Migration(14, 15) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            val now = System.currentTimeMillis()
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO patients (patientId, name, createdAt)
+                VALUES (?, ?, ?)
+                """.trimIndent(),
+                arrayOf(DEFAULT_PATIENT_ID, "Anonymous Patient", 0L)
+            )
+            db.execSQL(
+                """
+                INSERT OR IGNORE INTO wounds (woundId, patientId, location, createdAtMillis)
+                VALUES (?, ?, ?, ?)
+                """.trimIndent(),
+                arrayOf(DEFAULT_WOUND_ID, DEFAULT_PATIENT_ID, "Unspecified", now)
+            )
+            db.execSQL(
+                """
+                UPDATE assessments
+                SET woundId = ?
+                WHERE woundId NOT IN (SELECT woundId FROM wounds)
+                """.trimIndent(),
+                arrayOf(DEFAULT_WOUND_ID)
+            )
+        }
+    }
+
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {

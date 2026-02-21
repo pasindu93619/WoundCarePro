@@ -5,6 +5,7 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.pasindu.woundcarepro.data.local.DEFAULT_PATIENT_ID
+import com.pasindu.woundcarepro.data.local.DEFAULT_WOUND_ID
 import com.pasindu.woundcarepro.data.local.DatabaseMigrations
 import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
@@ -36,33 +37,40 @@ object AppModule {
             WoundCareDatabase::class.java,
             "wound-care.db"
         )
-            // DEV NOTE: after changing Room schema/migrations during development,
-            // clear app data or reinstall if you encounter migration/state issues.
             .addMigrations(
                 DatabaseMigrations.MIGRATION_9_10,
                 DatabaseMigrations.MIGRATION_10_11,
                 DatabaseMigrations.MIGRATION_11_12,
                 DatabaseMigrations.MIGRATION_12_13,
-                DatabaseMigrations.MIGRATION_13_14
+                DatabaseMigrations.MIGRATION_13_14,
+                DatabaseMigrations.MIGRATION_14_15
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
                     super.onCreate(db)
-                    seedDefaultPatient(db)
+                    seedDefaultRows(db)
                 }
 
                 override fun onOpen(db: SupportSQLiteDatabase) {
                     super.onOpen(db)
-                    seedDefaultPatient(db)
+                    seedDefaultRows(db)
                 }
 
-                private fun seedDefaultPatient(db: SupportSQLiteDatabase) {
+                private fun seedDefaultRows(db: SupportSQLiteDatabase) {
+                    val now = System.currentTimeMillis()
                     db.execSQL(
                         """
                         INSERT OR IGNORE INTO patients (patientId, name, createdAt)
                         VALUES (?, ?, ?)
                         """.trimIndent(),
                         arrayOf(DEFAULT_PATIENT_ID, "Anonymous Patient", 0L)
+                    )
+                    db.execSQL(
+                        """
+                        INSERT OR IGNORE INTO wounds (woundId, patientId, location, createdAtMillis)
+                        VALUES (?, ?, ?, ?)
+                        """.trimIndent(),
+                        arrayOf(DEFAULT_WOUND_ID, DEFAULT_PATIENT_ID, "Unspecified", now)
                     )
                 }
             })
@@ -98,6 +106,7 @@ object AppModule {
             database = database,
             assessmentDao = database.assessmentDao(),
             patientDao = database.patientDao(),
+            woundDao = database.woundDao(),
             measurementDao = database.measurementDao(),
             auditRepository = auditRepository
         )
