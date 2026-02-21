@@ -7,6 +7,7 @@ import com.pasindu.woundcarepro.data.local.dao.AuditLogDao
 import com.pasindu.woundcarepro.data.local.dao.ConsentDao
 import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
 import com.pasindu.woundcarepro.data.local.dao.PatientDao
+import com.pasindu.woundcarepro.data.local.dao.WoundDao
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.AuditLog
 import com.pasindu.woundcarepro.data.local.entity.Consent
@@ -23,11 +24,12 @@ import com.pasindu.woundcarepro.data.local.entity.Wound
         Consent::class,
         AuditLog::class
     ],
-    version = 14,
+    version = 15,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
     abstract fun patientDao(): PatientDao
+    abstract fun woundDao(): WoundDao
     abstract fun assessmentDao(): AssessmentDao
     abstract fun measurementDao(): MeasurementDao
     abstract fun consentDao(): ConsentDao

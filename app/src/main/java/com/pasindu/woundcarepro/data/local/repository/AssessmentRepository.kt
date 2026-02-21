@@ -1,13 +1,15 @@
 package com.pasindu.woundcarepro.data.local.repository
 
 import androidx.room.withTransaction
-import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.AssessmentDao
+import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
 import com.pasindu.woundcarepro.data.local.dao.PatientDao
+import com.pasindu.woundcarepro.data.local.dao.WoundDao
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.entity.Patient
+import com.pasindu.woundcarepro.data.local.entity.Wound
 import java.util.UUID
 
 sealed interface SaveOutlineResult {
@@ -35,6 +37,7 @@ class AssessmentRepositoryImpl(
     private val database: WoundCareDatabase,
     private val assessmentDao: AssessmentDao,
     private val patientDao: PatientDao,
+    private val woundDao: WoundDao = database.woundDao(),
     private val measurementDao: MeasurementDao,
     private val auditRepository: AuditRepository
 ) : AssessmentRepository {
@@ -43,28 +46,38 @@ class AssessmentRepositoryImpl(
     override suspend fun createAssessment(selectedPatientId: String?): Assessment {
         val now = System.currentTimeMillis()
         val patientId = selectedPatientId ?: UUID.randomUUID().toString()
-        val assessment = Assessment(
-            assessmentId = UUID.randomUUID().toString(),
-            patientId = patientId,
-            timestamp = now,
-            imagePath = null,
-            outlineJson = null,
-            pixelArea = null,
-            calibrationFactor = null,
-            guidanceMetricsJson = null
-        )
 
-        database.withTransaction {
+        return database.withTransaction {
             val patient = patientDao.getById(patientId) ?: Patient(
                 patientId = patientId,
                 name = "Unknown",
                 createdAt = now
             )
             patientDao.upsert(patient)
-            assessmentDao.upsert(assessment)
-        }
 
-        return assessment
+            val woundId = "wound-$patientId"
+            val wound = woundDao.getById(woundId) ?: Wound(
+                woundId = woundId,
+                patientId = patientId,
+                location = "Unspecified",
+                createdAtMillis = now
+            )
+            woundDao.upsert(wound)
+
+            val assessment = Assessment(
+                assessmentId = UUID.randomUUID().toString(),
+                patientId = patientId,
+                woundId = woundId,
+                timestamp = now,
+                imagePath = null,
+                outlineJson = null,
+                pixelArea = null,
+                calibrationFactor = null,
+                guidanceMetricsJson = null
+            )
+            assessmentDao.upsert(assessment)
+            assessment
+        }
     }
 
     override suspend fun getById(assessmentId: String): Assessment? = assessmentDao.getById(assessmentId)
