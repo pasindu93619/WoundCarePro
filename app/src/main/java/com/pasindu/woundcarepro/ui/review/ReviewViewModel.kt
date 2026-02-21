@@ -2,28 +2,26 @@ package com.pasindu.woundcarepro.ui.review
 
 import android.graphics.PointF
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.SaveOutlineResult
 import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
 import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
-import com.pasindu.woundcarepro.measurement.WoundOutline
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 data class ReviewUiState(
     val points: List<PointF> = emptyList(),
-    val pixelArea: Double? = null,
-    val isSaving: Boolean = false,
-    val saveError: String? = null,
-    val saveSuccess: Boolean = false,
-    val needsCalibration: Boolean = false
+    val isPolygonClosed: Boolean = false,
+    val pixelArea: Double? = null
 )
 
-class ReviewViewModel(
+@HiltViewModel
+class ReviewViewModel @Inject constructor(
     private val assessmentRepository: AssessmentRepository
 ) : ViewModel() {
     private val _assessment = MutableStateFlow<Assessment?>(null)
@@ -36,30 +34,41 @@ class ReviewViewModel(
         viewModelScope.launch {
             val loaded = assessmentRepository.getById(assessmentId)
             _assessment.value = loaded
-            val outline = OutlineJsonConverter.fromJson(loaded?.outlineJson)
+            val points = OutlineJsonConverter.fromJson(loaded?.polygonPointsJson ?: loaded?.outlineJson)
             _uiState.value = ReviewUiState(
-                points = outline.points,
+                points = points,
+                isPolygonClosed = points.size >= 3,
                 pixelArea = loaded?.pixelArea
             )
         }
     }
 
     fun addPoint(point: PointF) {
-        val updated = _uiState.value.points + point
-        _uiState.value = _uiState.value.copy(points = updated, pixelArea = null, saveSuccess = false)
+        val current = _uiState.value
+        if (current.isPolygonClosed) return
+        val updated = current.points + point
+        _uiState.value = current.copy(points = updated)
+    }
+
+    fun closePolygon() {
+        val current = _uiState.value
+        if (current.points.size < 3) return
+        val area = PolygonAreaCalculator.calculateAreaPixels(current.points)
+        _uiState.value = current.copy(isPolygonClosed = true, pixelArea = area)
     }
 
     fun undoLastPoint() {
         if (_uiState.value.points.isEmpty()) return
+        val updatedPoints = _uiState.value.points.dropLast(1)
         _uiState.value = _uiState.value.copy(
-            points = _uiState.value.points.dropLast(1),
-            pixelArea = null,
-            saveSuccess = false
+            points = updatedPoints,
+            isPolygonClosed = false,
+            pixelArea = null
         )
     }
 
     fun clearPoints() {
-        _uiState.value = _uiState.value.copy(points = emptyList(), pixelArea = null, saveSuccess = false)
+        _uiState.value = ReviewUiState()
     }
 
     fun clearTransientState() {
@@ -68,40 +77,21 @@ class ReviewViewModel(
 
     fun saveOutlineAndMeasurement(assessmentId: String) {
         viewModelScope.launch {
-            val points = _uiState.value.points
-            if (points.size < 3) {
-                _uiState.value = _uiState.value.copy(saveError = "Add at least 3 points before saving")
-                return@launch
-            }
-
-            _uiState.value = _uiState.value.copy(isSaving = true, saveError = null, saveSuccess = false)
-
+            val current = assessmentRepository.getById(assessmentId) ?: return@launch
+            val state = _uiState.value
+            if (!state.isPolygonClosed || state.points.size < 3) return@launch
+            val points = state.points
             val area = PolygonAreaCalculator.calculateAreaPixels(points)
-            val outlineJson = OutlineJsonConverter.toJson(WoundOutline(points = points))
-
-            when (val result = assessmentRepository.saveOutlineAndMeasurement(assessmentId, outlineJson, area)) {
-                is SaveOutlineResult.Error -> {
-                    _uiState.value = _uiState.value.copy(isSaving = false, saveError = result.message)
-                }
-
-                is SaveOutlineResult.Success -> {
-                    _assessment.value = result.assessment
-                    _uiState.value = _uiState.value.copy(
-                        pixelArea = area,
-                        isSaving = false,
-                        saveSuccess = true,
-                        needsCalibration = result.measurement.areaCm2 == null
-                    )
-                }
-            }
+            val polygonPointsJson = OutlineJsonConverter.toJson(points)
+            val updated = current.copy(
+                outlineJson = polygonPointsJson,
+                polygonPointsJson = polygonPointsJson,
+                pixelArea = area
+            )
+            assessmentRepository.upsert(updated)
+            _assessment.value = updated
+            _uiState.value = _uiState.value.copy(pixelArea = area, isPolygonClosed = true)
+            onSaved()
         }
-    }
-}
-
-class ReviewViewModelFactory(
-    private val assessmentRepository: AssessmentRepository
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        return ReviewViewModel(assessmentRepository) as T
     }
 }

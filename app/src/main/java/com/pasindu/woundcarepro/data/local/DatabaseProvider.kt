@@ -15,12 +15,29 @@ object DatabaseProvider {
                 context.applicationContext,
                 WoundCareDatabase::class.java,
                 "wound-care.db"
-            ).addMigrations(
-                DatabaseMigrations.MIGRATION_9_10,
-                DatabaseMigrations.MIGRATION_10_11,
-                DatabaseMigrations.MIGRATION_11_12,
-                DatabaseMigrations.MIGRATION_12_13
-            ).build().also { instance = it }
+            ).fallbackToDestructiveMigration()
+                .addCallback(object : RoomDatabase.Callback() {
+                    override fun onCreate(db: SupportSQLiteDatabase) {
+                        super.onCreate(db)
+                        seedDefaultPatient(db)
+                    }
+
+                    override fun onOpen(db: SupportSQLiteDatabase) {
+                        super.onOpen(db)
+                        seedDefaultPatient(db)
+                    }
+
+                    private fun seedDefaultPatient(db: SupportSQLiteDatabase) {
+                        db.execSQL(
+                            """
+                            INSERT OR IGNORE INTO patients (patientId, name, createdAt)
+                            VALUES (?, ?, ?)
+                            """.trimIndent(),
+                            arrayOf(DEFAULT_PATIENT_ID, "Anonymous Patient", 0L)
+                        )
+                    }
+                })
+                .build().also { instance = it }
         }
     }
 }

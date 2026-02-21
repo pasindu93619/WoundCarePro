@@ -16,3 +16,18 @@ object PolygonAreaCalculator {
         return abs(sum) / 2.0
     }
 }
+
+object OutlineJsonConverter {
+    private val gson = Gson()
+
+    fun toJson(points: List<PointF>): String = gson.toJson(points)
+
+    fun fromJson(json: String?): List<PointF> {
+        if (json.isNullOrBlank()) return emptyList()
+
+        return runCatching {
+            val type = object : TypeToken<List<PointF>>() {}.type
+            gson.fromJson<List<PointF>>(json, type) ?: emptyList()
+        }.getOrDefault(emptyList())
+    }
+}

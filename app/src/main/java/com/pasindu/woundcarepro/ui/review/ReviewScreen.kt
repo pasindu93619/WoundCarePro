@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
@@ -79,6 +80,8 @@ fun ReviewScreen(
     val activeImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
     val statusMessage = if (activeImagePath == null) {
         "No captured image found. Please retake."
+    } else if (uiState.isPolygonClosed) {
+        "Polygon closed. Save to persist."
     } else {
         "Tap on wound border to add polygon points"
     }
@@ -118,8 +121,9 @@ fun ReviewScreen(
                     .fillMaxWidth()
                     .background(Color.Black)
                     .onSizeChanged { canvasSize = it }
-                    .pointerInput(bitmap, uiState.points) {
+                    .pointerInput(bitmap, uiState.points, uiState.isPolygonClosed) {
                         detectTapGestures { tapOffset ->
+                            if (uiState.isPolygonClosed) return@detectTapGestures
                             val mapped = mapCanvasTapToImagePoint(
                                 tap = tapOffset,
                                 canvasSize = canvasSize,
@@ -147,6 +151,19 @@ fun ReviewScreen(
                         )
                     }
 
+                    if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
+                        drawPath(
+                            path = androidx.compose.ui.graphics.Path().apply {
+                                moveTo(mappedPoints.first().x, mappedPoints.first().y)
+                                for (i in 1 until mappedPoints.size) {
+                                    lineTo(mappedPoints[i].x, mappedPoints[i].y)
+                                }
+                                close()
+                            },
+                            color = Color.Red.copy(alpha = 0.25f)
+                        )
+                    }
+
                     if (mappedPoints.size >= 2) {
                         for (i in 0 until mappedPoints.lastIndex) {
                             drawLine(
@@ -158,24 +175,25 @@ fun ReviewScreen(
                         }
                     }
 
-                    if (mappedPoints.size >= 3) {
+                    if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
                         drawLine(
-                            color = Color.Red.copy(alpha = 0.7f),
+                            color = Color.Red,
                             start = mappedPoints.last(),
                             end = mappedPoints.first(),
-                            strokeWidth = 3f
+                            strokeWidth = 4f
                         )
                     }
 
                     mappedPoints.forEach { point ->
                         drawCircle(color = Color.Yellow, radius = 8f, center = point)
+                        drawCircle(color = Color.Black, radius = 8f, center = point, style = Stroke(width = 2f))
                     }
                 }
             }
         }
 
         Text(
-            text = "Saved pixel area: ${uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"}",
+            text = "Pixel area: ${uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"}",
             style = MaterialTheme.typography.bodyMedium
         )
 
@@ -186,27 +204,22 @@ fun ReviewScreen(
             Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f), enabled = !uiState.isSaving) {
                 Text("Undo")
             }
-            Button(onClick = { viewModel.clearPoints() }, modifier = Modifier.weight(1f), enabled = !uiState.isSaving) {
+            Button(
+                onClick = { viewModel.closePolygon() },
+                enabled = uiState.points.size >= 3 && !uiState.isPolygonClosed,
+                modifier = Modifier.weight(1f)
+            ) {
+                Text("Close")
+            }
+            Button(onClick = { viewModel.clearPoints() }, modifier = Modifier.weight(1f)) {
                 Text("Clear")
             }
             Button(
-                onClick = {
-                    if (isSelfIntersecting(uiState.points)) {
-                        coroutineScope.launch {
-                            snackbarHostState.showSnackbar("Outline crosses itself. Adjust points before saving.")
-                        }
-                    } else {
-                        viewModel.saveOutlineAndMeasurement(assessmentId)
-                    }
-                },
-                enabled = uiState.points.size >= 3 && !uiState.isSaving,
+                onClick = { viewModel.saveOutline(assessmentId) },
+                enabled = uiState.isPolygonClosed,
                 modifier = Modifier.weight(1f)
             ) {
-                if (uiState.isSaving) {
-                    CircularProgressIndicator(modifier = Modifier.padding(2.dp))
-                } else {
-                    Text("Save Outline")
-                }
+                Text("Save")
             }
         }
 
@@ -234,10 +247,32 @@ private fun isSelfIntersecting(points: List<PointF>): Boolean {
             val b1 = points[j]
             val b2 = points[(j + 1) % points.size]
 
-            if (segmentsIntersect(a1, a2, b1, b2)) {
-                return true
-            }
-        }
+internal fun mapImagePointToCanvasOffset(
+    point: PointF,
+    canvasSize: androidx.compose.ui.geometry.Size,
+    imageWidth: Float,
+    imageHeight: Float
+): Offset? {
+    if (canvasSize.width == 0f || canvasSize.height == 0f) return null
+
+    val imageAspect = imageWidth / imageHeight
+    val canvasAspect = canvasSize.width / canvasSize.height
+
+    val drawnW: Float
+    val drawnH: Float
+    val left: Float
+    val top: Float
+
+    if (imageAspect > canvasAspect) {
+        drawnW = canvasSize.width
+        drawnH = canvasSize.width / imageAspect
+        left = 0f
+        top = (canvasSize.height - drawnH) / 2f
+    } else {
+        drawnH = canvasSize.height
+        drawnW = canvasSize.height * imageAspect
+        top = 0f
+        left = (canvasSize.width - drawnW) / 2f
     }
 
     return false
