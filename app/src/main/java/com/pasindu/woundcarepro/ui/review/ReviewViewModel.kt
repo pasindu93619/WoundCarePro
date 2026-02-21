@@ -17,7 +17,11 @@ import kotlinx.coroutines.launch
 data class ReviewUiState(
     val points: List<PointF> = emptyList(),
     val isPolygonClosed: Boolean = false,
-    val pixelArea: Double? = null
+    val pixelArea: Double? = null,
+    val isSaving: Boolean = false,
+    val saveError: String? = null,
+    val saveSuccess: Boolean = false,
+    val needsCalibration: Boolean = false
 )
 
 @HiltViewModel
@@ -34,7 +38,8 @@ class ReviewViewModel @Inject constructor(
         viewModelScope.launch {
             val loaded = assessmentRepository.getById(assessmentId)
             _assessment.value = loaded
-            val points = OutlineJsonConverter.fromJson(loaded?.polygonPointsJson ?: loaded?.outlineJson)
+            val outline = OutlineJsonConverter.fromJson(loaded?.polygonPointsJson ?: loaded?.outlineJson)
+            val points = outline.points
             _uiState.value = ReviewUiState(
                 points = points,
                 isPolygonClosed = points.size >= 3,
@@ -46,25 +51,22 @@ class ReviewViewModel @Inject constructor(
     fun addPoint(point: PointF) {
         val current = _uiState.value
         if (current.isPolygonClosed) return
-        val updated = current.points + point
-        _uiState.value = current.copy(points = updated)
+        _uiState.value = current.copy(points = current.points + point)
     }
 
     fun closePolygon() {
         val current = _uiState.value
         if (current.points.size < 3) return
-        val area = PolygonAreaCalculator.calculateAreaPixels(current.points)
-        _uiState.value = current.copy(isPolygonClosed = true, pixelArea = area)
+        _uiState.value = current.copy(
+            isPolygonClosed = true,
+            pixelArea = PolygonAreaCalculator.calculateAreaPixels(current.points)
+        )
     }
 
     fun undoLastPoint() {
-        if (_uiState.value.points.isEmpty()) return
-        val updatedPoints = _uiState.value.points.dropLast(1)
-        _uiState.value = _uiState.value.copy(
-            points = updatedPoints,
-            isPolygonClosed = false,
-            pixelArea = null
-        )
+        val current = _uiState.value
+        if (current.points.isEmpty()) return
+        _uiState.value = current.copy(points = current.points.dropLast(1), isPolygonClosed = false, pixelArea = null)
     }
 
     fun clearPoints() {
@@ -75,23 +77,31 @@ class ReviewViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(saveError = null, saveSuccess = false, needsCalibration = false)
     }
 
-    fun saveOutlineAndMeasurement(assessmentId: String) {
+    fun saveOutline(assessmentId: String) {
         viewModelScope.launch {
-            val current = assessmentRepository.getById(assessmentId) ?: return@launch
             val state = _uiState.value
             if (!state.isPolygonClosed || state.points.size < 3) return@launch
-            val points = state.points
-            val area = PolygonAreaCalculator.calculateAreaPixels(points)
-            val polygonPointsJson = OutlineJsonConverter.toJson(points)
-            val updated = current.copy(
-                outlineJson = polygonPointsJson,
-                polygonPointsJson = polygonPointsJson,
-                pixelArea = area
-            )
-            assessmentRepository.upsert(updated)
-            _assessment.value = updated
-            _uiState.value = _uiState.value.copy(pixelArea = area, isPolygonClosed = true)
-            onSaved()
+            _uiState.value = state.copy(isSaving = true, saveError = null, saveSuccess = false)
+
+            val outlineJson = OutlineJsonConverter.toJson(com.pasindu.woundcarepro.measurement.WoundOutline(state.points))
+            when (val result = assessmentRepository.saveOutlineAndMeasurement(
+                assessmentId = assessmentId,
+                outlineJson = outlineJson,
+                pixelArea = PolygonAreaCalculator.calculateAreaPixels(state.points)
+            )) {
+                is SaveOutlineResult.Success -> {
+                    _assessment.value = result.assessment
+                    _uiState.value = _uiState.value.copy(
+                        isSaving = false,
+                        saveSuccess = true,
+                        pixelArea = result.measurement.pixelArea,
+                        needsCalibration = result.measurement.areaCm2 == null
+                    )
+                }
+                is SaveOutlineResult.Error -> {
+                    _uiState.value = _uiState.value.copy(isSaving = false, saveError = result.message)
+                }
+            }
         }
     }
 }

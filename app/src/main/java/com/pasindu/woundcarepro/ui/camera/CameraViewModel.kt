@@ -19,18 +19,7 @@ class CameraViewModel @Inject constructor(
         onCreated: (String, String) -> Unit
     ) {
         viewModelScope.launch {
-            assessmentRepository.upsert(
-                Assessment(
-                    assessmentId = id,
-                    patientId = patientId,
-                    timestamp = System.currentTimeMillis(),
-                    imagePath = null,
-                    outlineJson = null,
-                    polygonPointsJson = null,
-                    pixelArea = null,
-                    calibrationFactor = null
-                )
-            )
+            val assessment = assessmentRepository.createAssessment(selectedPatientId)
             onCreated(assessment.assessmentId, assessment.patientId)
         }
     }
