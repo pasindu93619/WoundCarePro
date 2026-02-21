@@ -3,7 +3,9 @@ package com.pasindu.woundcarepro.di
 import android.content.Context
 import android.hardware.camera2.CameraManager
 import com.pasindu.woundcarepro.data.optical.calibration.CameraCalibrationRepositoryImpl
+import com.pasindu.woundcarepro.data.optical.capture.Camera2StereoCaptureController
 import com.pasindu.woundcarepro.domain.optical.CameraCalibrationRepository
+import com.pasindu.woundcarepro.domain.optical.StereoCaptureController
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,5 +30,17 @@ object OpticalModule {
         cameraManager: CameraManager
     ): CameraCalibrationRepository {
         return CameraCalibrationRepositoryImpl(cameraManager)
+    }
+
+    @Provides
+    @Singleton
+    fun provideStereoCaptureController(
+        cameraManager: CameraManager,
+        calibrationRepository: CameraCalibrationRepository
+    ): StereoCaptureController {
+        return Camera2StereoCaptureController(
+            cameraManager = cameraManager,
+            calibrationRepository = calibrationRepository
+        )
     }
 }
