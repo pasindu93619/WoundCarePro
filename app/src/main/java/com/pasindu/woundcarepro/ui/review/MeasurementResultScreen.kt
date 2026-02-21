@@ -18,9 +18,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -33,6 +30,8 @@ import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
 fun MeasurementResultScreen(
     assessmentId: String,
     viewModel: MeasurementViewModel,
+    onCalibrate: () -> Unit,
+    onMarkerCalibration: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -47,16 +46,24 @@ fun MeasurementResultScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(text = "Measurement Result", style = MaterialTheme.typography.headlineMedium)
 
-        Text(
-            text = "Area (pixels²): ${computation?.areaPixels?.let { "%.2f".format(it) } ?: "N/A"}",
-            style = MaterialTheme.typography.bodyLarge
-        )
+        if (areaPixels == null) {
+            Text(
+                text = "No outline saved yet",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        } else {
+            Text(
+                text = "Area (pixels²): ${"%.2f".format(areaPixels)}",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
 
         val points = OutlineJsonConverter.fromJson(assessment?.polygonPointsJson ?: assessment?.outlineJson)
         val bitmap = assessment?.imagePath?.let { path -> BitmapFactory.decodeFile(path)?.asImageBitmap() }
@@ -110,31 +117,34 @@ fun MeasurementResultScreen(
         val areaCm2 = computation?.areaCm2
         if (areaCm2 != null) {
             Text(
-                text = "Area (cm²): %.4f".format(areaCm2),
+                text = "Area (cm²): ${"%.2f".format(areaCm2)} cm²",
                 style = MaterialTheme.typography.bodyLarge
             )
         } else {
             Text(
-                text = "Calibration not set. Area in cm² is unavailable.",
+                text = "Calibration needed to compute cm²",
                 style = MaterialTheme.typography.bodyMedium
             )
-        }
-
-        if (saveMessage.isNotBlank()) {
-            Text(text = saveMessage, style = MaterialTheme.typography.bodyMedium)
+            Button(
+                onClick = onCalibrate,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Calibrate")
+            }
         }
 
         Button(
-            onClick = {
-                viewModel.saveMeasurement(assessmentId = assessmentId) {
-                    saveMessage = "Measurement saved."
-                    onNext()
-                }
-            },
-            enabled = computation != null,
+            onClick = onMarkerCalibration,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Save & Continue")
+            Text("Marker Calibration (Recommended)")
+        }
+
+        Button(
+            onClick = onNext,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Continue")
         }
     }
 }

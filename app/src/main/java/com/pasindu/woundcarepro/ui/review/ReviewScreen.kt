@@ -13,9 +13,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.weight
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,10 +25,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -35,23 +37,48 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @Composable
 fun ReviewScreen(
     assessmentId: String,
     viewModel: ReviewViewModel,
     onRetake: () -> Unit,
-    onAccept: () -> Unit,
+    onNextAfterSave: (needsCalibration: Boolean) -> Unit,
+    onMarkerCalibration: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val assessment by viewModel.assessment.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val coroutineScope = rememberCoroutineScope()
 
     LaunchedEffect(assessmentId) {
         viewModel.loadAssessment(assessmentId)
     }
 
-    val statusMessage = if (assessment?.imagePath == null) {
+    LaunchedEffect(uiState.saveError) {
+        uiState.saveError?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearTransientState()
+        }
+    }
+
+    LaunchedEffect(uiState.saveSuccess) {
+        if (uiState.saveSuccess) {
+            onNextAfterSave(uiState.needsCalibration)
+            viewModel.clearTransientState()
+        }
+    }
+
+    LaunchedEffect(uiState.needsCalibration) {
+        if (uiState.needsCalibration) {
+            snackbarHostState.showSnackbar("Calibration needed for cm²")
+        }
+    }
+
+    val activeImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
+    val statusMessage = if (activeImagePath == null) {
         "No captured image found. Please retake."
     } else if (uiState.isPolygonClosed) {
         "Polygon closed. Save to persist."
@@ -59,19 +86,29 @@ fun ReviewScreen(
         "Tap on wound border to add polygon points"
     }
 
-    val bitmap = assessment?.imagePath?.let { path ->
+    val bitmap = activeImagePath?.let { path ->
         BitmapFactory.decodeFile(path)?.asImageBitmap()
     }
 
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        SnackbarHost(hostState = snackbarHostState)
         Text(text = "Review", style = MaterialTheme.typography.headlineMedium)
         Text(text = statusMessage, style = MaterialTheme.typography.bodyMedium)
+
+        Button(
+            onClick = onMarkerCalibration,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isSaving && assessment?.imagePath != null
+        ) {
+            Text("Marker Calibration (Recommended)")
+        }
 
         if (bitmap != null) {
             var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -164,7 +201,7 @@ fun ReviewScreen(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f)) {
+            Button(onClick = { viewModel.undoLastPoint() }, modifier = Modifier.weight(1f), enabled = !uiState.isSaving) {
                 Text("Undo")
             }
             Button(
@@ -186,65 +223,29 @@ fun ReviewScreen(
             }
         }
 
-        Row(
+        Button(
+            onClick = onRetake,
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            enabled = !uiState.isSaving
         ) {
-            Button(
-                onClick = onRetake,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Retake")
-            }
-
-            Button(
-                onClick = onAccept,
-                enabled = uiState.pixelArea != null,
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Continue")
-            }
+            Text("Retake")
         }
     }
 }
 
-private fun mapCanvasTapToImagePoint(
-    tap: Offset,
-    canvasSize: IntSize,
-    imageWidth: Float,
-    imageHeight: Float
-): PointF? {
-    if (canvasSize.width == 0 || canvasSize.height == 0) return null
+private fun isSelfIntersecting(points: List<PointF>): Boolean {
+    if (points.size < 4) return false
 
-    val canvasW = canvasSize.width.toFloat()
-    val canvasH = canvasSize.height.toFloat()
-    val imageAspect = imageWidth / imageHeight
-    val canvasAspect = canvasW / canvasH
+    for (i in points.indices) {
+        val a1 = points[i]
+        val a2 = points[(i + 1) % points.size]
 
-    val drawnW: Float
-    val drawnH: Float
-    val left: Float
-    val top: Float
+        for (j in i + 1 until points.size) {
+            if (kotlin.math.abs(i - j) <= 1) continue
+            if (i == 0 && j == points.lastIndex) continue
 
-    if (imageAspect > canvasAspect) {
-        drawnW = canvasW
-        drawnH = canvasW / imageAspect
-        left = 0f
-        top = (canvasH - drawnH) / 2f
-    } else {
-        drawnH = canvasH
-        drawnW = canvasH * imageAspect
-        top = 0f
-        left = (canvasW - drawnW) / 2f
-    }
-
-    if (tap.x < left || tap.x > left + drawnW || tap.y < top || tap.y > top + drawnH) return null
-
-    val normalizedX = (tap.x - left) / drawnW
-    val normalizedY = (tap.y - top) / drawnH
-
-    return PointF(normalizedX * imageWidth, normalizedY * imageHeight)
-}
+            val b1 = points[j]
+            val b2 = points[(j + 1) % points.size]
 
 internal fun mapImagePointToCanvasOffset(
     point: PointF,
@@ -274,7 +275,19 @@ internal fun mapImagePointToCanvasOffset(
         left = (canvasSize.width - drawnW) / 2f
     }
 
-    val x = left + (point.x / imageWidth) * drawnW
-    val y = top + (point.y / imageHeight) * drawnH
-    return Offset(x, y)
+    return false
+}
+
+private fun segmentsIntersect(p1: PointF, p2: PointF, p3: PointF, p4: PointF): Boolean {
+    val d1 = direction(p3, p4, p1)
+    val d2 = direction(p3, p4, p2)
+    val d3 = direction(p1, p2, p3)
+    val d4 = direction(p1, p2, p4)
+
+    return ((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) &&
+        ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))
+}
+
+private fun direction(a: PointF, b: PointF, c: PointF): Float {
+    return ((c.x - a.x) * (b.y - a.y)) - ((c.y - a.y) * (b.x - a.x))
 }

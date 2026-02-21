@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
+import com.pasindu.woundcarepro.data.local.repository.SaveOutlineResult
 import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
 import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -70,7 +71,11 @@ class ReviewViewModel @Inject constructor(
         _uiState.value = ReviewUiState()
     }
 
-    fun saveOutline(assessmentId: String, onSaved: () -> Unit = {}) {
+    fun clearTransientState() {
+        _uiState.value = _uiState.value.copy(saveError = null, saveSuccess = false, needsCalibration = false)
+    }
+
+    fun saveOutlineAndMeasurement(assessmentId: String) {
         viewModelScope.launch {
             val current = assessmentRepository.getById(assessmentId) ?: return@launch
             val state = _uiState.value

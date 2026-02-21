@@ -1,8 +1,6 @@
 package com.pasindu.woundcarepro.measurement
 
 import android.graphics.PointF
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import kotlin.math.abs
 
 object PolygonAreaCalculator {

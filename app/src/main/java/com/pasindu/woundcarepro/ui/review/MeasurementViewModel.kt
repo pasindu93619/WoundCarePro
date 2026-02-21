@@ -7,24 +7,14 @@ import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepository
-import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
-import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
-import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
-data class MeasurementComputation(
-    val areaPixels: Double,
-    val areaCm2: Double?
-)
 
 class MeasurementViewModel(
     private val assessmentRepository: AssessmentRepository,
     private val measurementRepository: MeasurementRepository
 ) : ViewModel() {
-    private val _measurementComputation = MutableStateFlow<MeasurementComputation?>(null)
-    val measurementComputation: StateFlow<MeasurementComputation?> = _measurementComputation
 
     private val _assessment = MutableStateFlow<Assessment?>(null)
     val assessment: StateFlow<Assessment?> = _assessment
@@ -40,19 +30,17 @@ class MeasurementViewModel(
         }
     }
 
-    fun saveMeasurement(assessmentId: String, onSaved: () -> Unit = {}) {
+    fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
-            val computed = _measurementComputation.value ?: return@launch
-            measurementRepository.upsert(
-                Measurement(
-                    measurementId = UUID.randomUUID().toString(),
-                    assessmentId = assessmentId,
-                    areaPixels = computed.areaPixels,
-                    areaCm2 = computed.areaCm2,
-                    createdAt = System.currentTimeMillis()
-                )
-            )
-            onSaved()
+            val measurement = measurementRepository.getByAssessmentId(assessmentId)
+            if (measurement != null) {
+                _areaPixels.value = measurement.pixelArea
+                _areaCm2.value = measurement.areaCm2
+            } else {
+                val assessment = assessmentRepository.getById(assessmentId)
+                _areaPixels.value = assessment?.pixelArea
+                _areaCm2.value = null
+            }
         }
     }
 }
@@ -62,6 +50,7 @@ class MeasurementViewModelFactory(
     private val measurementRepository: MeasurementRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
         return MeasurementViewModel(assessmentRepository, measurementRepository) as T
     }
 }

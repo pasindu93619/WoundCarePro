@@ -6,12 +6,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-
 android {
     namespace = "com.pasindu.woundcarepro"
     compileSdk {
         version = release(36)
     }
+    ndkVersion = "26.1.10909125"
 
     defaultConfig {
         applicationId = "com.pasindu.woundcarepro"
@@ -21,6 +21,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+            }
+        }
     }
 
     buildTypes {
@@ -42,12 +48,25 @@ android {
     buildFeatures {
         compose = true
     }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
+    }
+    packaging {
+        jniLibs {
+            pickFirsts += "**/libc++_shared.so"
+            pickFirsts += "**/libopencv_java4.so"
+        }
+    }
 }
 
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation("androidx.appcompat:appcompat:1.6.1")
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
@@ -61,8 +80,12 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+    implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
     implementation(libs.hilt.android)
+    implementation(project(":opencv"))
+
+    implementation("androidx.compose.foundation:foundation")
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     testImplementation(libs.junit)
@@ -72,4 +95,11 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    implementation(platform(libs.androidx.compose.bom))
+    implementation(libs.androidx.compose.ui)
+
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    implementation(libs.androidx.compose.material3)
 }

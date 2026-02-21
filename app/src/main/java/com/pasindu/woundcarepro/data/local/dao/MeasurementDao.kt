@@ -18,16 +18,16 @@ interface MeasurementDao {
         SELECT m.* FROM measurements m
         INNER JOIN assessments a ON a.assessmentId = m.assessmentId
         WHERE a.patientId = :patientId
-        ORDER BY m.createdAt DESC
+        ORDER BY m.createdAtMillis DESC
         """
     )
     suspend fun listByPatient(patientId: String): List<Measurement>
 
-    @Query("SELECT * FROM measurements ORDER BY createdAt DESC")
+    @Query("SELECT * FROM measurements ORDER BY createdAtMillis DESC")
     suspend fun listRecent(): List<Measurement>
 
-    @Query("SELECT * FROM measurements WHERE assessmentId = :assessmentId ORDER BY createdAt DESC LIMIT 1")
-    suspend fun getLatestByAssessmentId(assessmentId: String): Measurement?
+    @Query("SELECT * FROM measurements WHERE assessmentId = :assessmentId LIMIT 1")
+    suspend fun getByAssessmentId(assessmentId: String): Measurement?
 
     @Query("DELETE FROM measurements WHERE measurementId = :measurementId")
     suspend fun delete(measurementId: String)

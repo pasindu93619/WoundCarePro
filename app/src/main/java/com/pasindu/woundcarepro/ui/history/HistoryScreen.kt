@@ -1,5 +1,6 @@
 package com.pasindu.woundcarepro.ui.history
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +38,7 @@ fun HistoryScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
@@ -47,17 +49,22 @@ fun HistoryScreen(
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(history) { item ->
+                    val areaText = when {
+                        item.latestMeasurement?.areaCm2 != null -> "%.2f cm²".format(item.latestMeasurement.areaCm2)
+                        item.assessment.calibrationFactor == null || item.assessment.calibrationFactor <= 0.0 -> "Calibration needed"
+                        else -> "N/A"
+                    }
                     Card(modifier = Modifier.fillMaxWidth()) {
                         Column(
                             modifier = Modifier.padding(12.dp),
                             verticalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             Text("Assessment #${item.assessment.assessmentId}", fontWeight = FontWeight.Bold)
-                            Text("Patient: ${item.assessment.patientId}")
                             Text("Date: ${item.assessment.timestamp.toReadableDate()}")
-                            Text(
-                                "Area: ${item.latestMeasurement?.areaCm2?.let { "%.4f cm²".format(it) } ?: "N/A"}"
-                            )
+                            item.assessment.woundLocation?.takeIf { it.isNotBlank() }?.let {
+                                Text("Location: $it")
+                            }
+                            Text("Area: $areaText")
                         }
                     }
                 }
