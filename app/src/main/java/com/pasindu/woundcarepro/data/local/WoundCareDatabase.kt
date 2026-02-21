@@ -1,87 +1,30 @@
 package com.pasindu.woundcarepro.data.local
 
 import androidx.room.Database
-import androidx.room.Entity
-import androidx.room.ForeignKey
-import androidx.room.Index
-import androidx.room.Insert
-import androidx.room.OnConflictStrategy
-import androidx.room.PrimaryKey
-import androidx.room.Query
 import androidx.room.RoomDatabase
-
-@Entity(tableName = "assessments")
-data class Assessment(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val createdAtEpochMillis: Long = System.currentTimeMillis(),
-    val status: String = "CREATED"
-)
-
-@Entity(
-    tableName = "image_assets",
-    foreignKeys = [
-        ForeignKey(
-            entity = Assessment::class,
-            parentColumns = ["id"],
-            childColumns = ["assessmentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["assessmentId"])]
-)
-data class ImageAsset(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val assessmentId: Long,
-    val filePath: String,
-    val capturedAtEpochMillis: Long = System.currentTimeMillis(),
-    val lightingQc: String = "PENDING",
-    val focusQc: String = "PENDING",
-    val orientationQc: String = "PENDING"
-)
-
-@Entity(
-    tableName = "measurements",
-    foreignKeys = [
-        ForeignKey(
-            entity = Assessment::class,
-            parentColumns = ["id"],
-            childColumns = ["assessmentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["assessmentId"])]
-)
-data class Measurement(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val assessmentId: Long,
-    val areaPixels: Double,
-    val createdAtEpochMillis: Long = System.currentTimeMillis()
-)
-
-@Dao
-interface AssessmentDao {
-    @Insert
-    suspend fun insertAssessment(assessment: Assessment): Long
-
-    @Insert
-    suspend fun insertImageAsset(imageAsset: ImageAsset): Long
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMeasurement(measurement: Measurement): Long
-
-    @Query("SELECT * FROM image_assets WHERE assessmentId = :assessmentId ORDER BY capturedAtEpochMillis DESC")
-    suspend fun getAssetsForAssessment(assessmentId: Long): List<ImageAsset>
-
-    @Query("SELECT * FROM measurements WHERE assessmentId = :assessmentId ORDER BY createdAtEpochMillis DESC LIMIT 1")
-    suspend fun getLatestMeasurementForAssessment(assessmentId: Long): Measurement?
-}
+import com.pasindu.woundcarepro.data.local.dao.AssessmentDao
+import com.pasindu.woundcarepro.data.local.dao.AuditLogDao
+import com.pasindu.woundcarepro.data.local.dao.ConsentDao
+import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
+import com.pasindu.woundcarepro.data.local.dao.PatientDao
+import com.pasindu.woundcarepro.data.local.dao.WoundDao
+import com.pasindu.woundcarepro.data.local.entity.Assessment
+import com.pasindu.woundcarepro.data.local.entity.AuditLog
+import com.pasindu.woundcarepro.data.local.entity.Consent
+import com.pasindu.woundcarepro.data.local.entity.Measurement
+import com.pasindu.woundcarepro.data.local.entity.Patient
+import com.pasindu.woundcarepro.data.local.entity.Wound
 
 @Database(
-    entities = [Assessment::class, ImageAsset::class, Measurement::class],
-    version = 2,
+    entities = [
+        Patient::class,
+        Wound::class,
+        Assessment::class,
+        Measurement::class,
+        Consent::class,
+        AuditLog::class
+    ],
+    version = 13,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
