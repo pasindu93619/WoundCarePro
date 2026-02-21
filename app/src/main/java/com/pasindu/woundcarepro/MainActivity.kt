@@ -42,6 +42,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.pasindu.woundcarepro.data.local.DatabaseProvider
 import com.pasindu.woundcarepro.data.local.Measurement
+import com.pasindu.woundcarepro.nativebridge.NativeBridge
 import com.pasindu.woundcarepro.ui.camera.CameraCaptureScreen
 import com.pasindu.woundcarepro.ui.export.ExportScreen
 import com.pasindu.woundcarepro.ui.review.CalibrationScreen

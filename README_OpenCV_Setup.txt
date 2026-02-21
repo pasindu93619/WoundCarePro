@@ -1,31 +1,25 @@
 OpenCV Android SDK setup for WoundCarePro
 =========================================
 
-This project expects the OpenCV Android SDK to be placed at:
+1) Download the official OpenCV Android SDK archive from:
+   https://opencv.org/releases/
+   (look for the Android SDK package)
 
-  third_party/opencv-android-sdk/
+2) From the project root, create the third_party directory if it does not exist:
+   third_party/
 
-Required SDK contents
----------------------
-After extraction, these folders must exist:
+3) Unzip the downloaded archive so the SDK is located exactly at:
+   third_party/opencv-android-sdk/
 
-  third_party/opencv-android-sdk/sdk/java
-  third_party/opencv-android-sdk/sdk/native
+4) Verify the extracted SDK contains these folders:
+   - third_party/opencv-android-sdk/sdk/java
+   - third_party/opencv-android-sdk/sdk/native
 
-Download and install
---------------------
-1. Download the OpenCV Android SDK zip from the official OpenCV releases page.
-2. Unzip the archive.
-3. Rename/move the extracted folder to:
-
-     third_party/opencv-android-sdk/
-
-4. Verify these paths exist:
-
-     third_party/opencv-android-sdk/sdk/java/build.gradle
-     third_party/opencv-android-sdk/sdk/native/jni/include/opencv2/core.hpp
+5) Sync Gradle in Android Studio.
 
 Notes
 -----
-- The Gradle settings include ":opencv" from `third_party/opencv-android-sdk/sdk/java`.
-- Native CMake config links against `libopencv_java4.so` from the SDK native jni libs.
+- The Gradle settings in this project include OpenCV as module :opencv from:
+  third_party/opencv-android-sdk/sdk/java
+- Native C++ integration expects OpenCV headers and JNI libs from:
+  third_party/opencv-android-sdk/sdk/native/jni
