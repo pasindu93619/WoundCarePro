@@ -11,7 +11,7 @@ android {
     compileSdk {
         version = release(36)
     }
-    ndkVersion = "26.3.11579264"
+    ndkVersion = "26.1.10909125"
 
     defaultConfig {
         applicationId = "com.pasindu.woundcarepro"
@@ -21,6 +21,12 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        externalNativeBuild {
+            cmake {
+                cppFlags += "-std=c++17"
+            }
+        }
     }
 
     buildTypes {
@@ -45,11 +51,13 @@ android {
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
         }
     }
     packaging {
         jniLibs {
             pickFirsts += "**/libc++_shared.so"
+            pickFirsts += "**/libopencv_java4.so"
         }
     }
 }

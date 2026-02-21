@@ -1,4 +1,4 @@
-package com.pasindu.woundcarepro.native
+package com.pasindu.woundcarepro.nativebridge
 
 object NativeBridge {
     init {
