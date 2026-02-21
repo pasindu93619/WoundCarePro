@@ -78,6 +78,7 @@ class AssessmentRepositoryImpl(
                 timestamp = now,
                 imagePath = null,
                 outlineJson = null,
+                polygonPointsJson = null,
                 pixelArea = null,
                 calibrationFactor = null,
                 guidanceMetricsJson = null
@@ -123,8 +124,6 @@ class AssessmentRepositoryImpl(
             val current = assessmentDao.getById(assessmentId) ?: return@withTransaction null
             val updated = current.copy(
                 rectifiedImagePath = rectifiedImagePath,
-                markerCornersJson = markerCornersJson,
-                homographyJson = homographyJson,
                 calibrationFactor = calibrationFactor
             )
             assessmentDao.upsert(updated)

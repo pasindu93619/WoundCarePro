@@ -4,12 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Assessment
-import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepository
+import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
+import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
+data class MeasurementComputation(
+    val areaPixels: Double,
+    val areaCm2: Double?
+)
 
 class MeasurementViewModel(
     private val assessmentRepository: AssessmentRepository,
@@ -19,28 +25,23 @@ class MeasurementViewModel(
     private val _assessment = MutableStateFlow<Assessment?>(null)
     val assessment: StateFlow<Assessment?> = _assessment
 
+    private val _measurementComputation = MutableStateFlow<MeasurementComputation?>(null)
+    val measurementComputation: StateFlow<MeasurementComputation?> = _measurementComputation
+
     fun loadMeasurement(assessmentId: String) {
         viewModelScope.launch {
             val assessment = assessmentRepository.getById(assessmentId) ?: return@launch
             _assessment.value = assessment
-            val points = OutlineJsonConverter.fromJson(assessment.polygonPointsJson ?: assessment.outlineJson)
-            val areaPixels = assessment.pixelArea ?: PolygonAreaCalculator.calculateAreaPixels(points)
-            val areaCm2 = assessment.calibrationFactor?.let { areaPixels * it }
-            _measurementComputation.value = MeasurementComputation(areaPixels = areaPixels, areaCm2 = areaCm2)
-        }
-    }
 
-    fun loadMeasurement(assessmentId: String) {
-        viewModelScope.launch {
             val measurement = measurementRepository.getByAssessmentId(assessmentId)
-            if (measurement != null) {
-                _areaPixels.value = measurement.pixelArea
-                _areaCm2.value = measurement.areaCm2
-            } else {
-                val assessment = assessmentRepository.getById(assessmentId)
-                _areaPixels.value = assessment?.pixelArea
-                _areaCm2.value = null
-            }
+            val areaPixels = measurement?.pixelArea
+                ?: assessment.pixelArea
+                ?: PolygonAreaCalculator.calculateAreaPixels(
+                    OutlineJsonConverter.fromJson(assessment.polygonPointsJson ?: assessment.outlineJson).points
+                )
+
+            val areaCm2 = measurement?.areaCm2 ?: assessment.calibrationFactor?.let { areaPixels * it * it }
+            _measurementComputation.value = MeasurementComputation(areaPixels, areaCm2)
         }
     }
 }

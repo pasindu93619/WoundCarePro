@@ -19,8 +19,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.pasindu.woundcarepro.data.local.AssessmentDao
-import com.pasindu.woundcarepro.data.local.ExportAssessmentMeasurementRow
+import com.pasindu.woundcarepro.data.local.dao.AssessmentDao
+import com.pasindu.woundcarepro.data.local.dao.ExportAssessmentMeasurementRow
 import kotlinx.coroutines.launch
 import java.io.File
 import java.time.LocalDate

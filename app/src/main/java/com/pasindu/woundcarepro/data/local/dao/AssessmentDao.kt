@@ -29,4 +29,25 @@ interface AssessmentDao {
 
     @Query("DELETE FROM assessments WHERE assessmentId = :assessmentId")
     suspend fun delete(assessmentId: String)
+
+
+    @Query(
+        """
+        SELECT 
+            a.assessmentId AS assessmentId,
+            a.timestamp AS assessmentCreatedAtEpochMillis,
+            CASE WHEN a.calibrationFactor IS NULL OR a.calibrationFactor <= 0 THEN 'NEEDS_CALIBRATION' ELSE 'CALIBRATED' END AS assessmentStatus,
+            m.pixelArea AS woundAreaPixels,
+            m.areaCm2 AS woundAreaCm2,
+            m.createdAtMillis AS measuredAtEpochMillis
+        FROM assessments a
+        LEFT JOIN measurements m ON m.assessmentId = a.assessmentId
+        WHERE a.timestamp BETWEEN :startEpochMillis AND :endEpochMillis
+        ORDER BY a.timestamp DESC
+        """
+    )
+    suspend fun getAssessmentsWithMeasurementsForRange(
+        startEpochMillis: Long,
+        endEpochMillis: Long
+    ): List<ExportAssessmentMeasurementRow>
 }
