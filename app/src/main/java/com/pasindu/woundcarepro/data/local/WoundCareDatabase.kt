@@ -1,6 +1,5 @@
 package com.pasindu.woundcarepro.data.local
 
-import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -147,5 +146,10 @@ interface AssessmentDao {
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
+    abstract fun patientDao(): PatientDao
+    abstract fun woundDao(): WoundDao
     abstract fun assessmentDao(): AssessmentDao
+    abstract fun measurementDao(): MeasurementDao
+    abstract fun consentDao(): ConsentDao
+    abstract fun auditLogDao(): AuditLogDao
 }
