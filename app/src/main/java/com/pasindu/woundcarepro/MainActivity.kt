@@ -46,7 +46,7 @@ import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.AuditRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.ConsentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepositoryImpl
-import com.pasindu.woundcarepro.native.NativeBridge
+import com.pasindu.woundcarepro.nativebridge.NativeBridge
 import com.pasindu.woundcarepro.security.AppLockManager
 import com.pasindu.woundcarepro.security.LockGateState
 import com.pasindu.woundcarepro.security.UnlockResult
