@@ -42,7 +42,7 @@ data class ImageAsset(
 )
 
 @Entity(
-    tableName = "calibration_params",
+    tableName = "measurements",
     foreignKeys = [
         ForeignKey(
             entity = Assessment::class,
@@ -53,44 +53,12 @@ data class ImageAsset(
     ],
     indices = [Index(value = ["assessmentId"])]
 )
-data class CalibrationParams(
-    @PrimaryKey(autoGenerate = true)
-    val id: Long = 0,
-    val assessmentId: Long,
-    val referenceLengthPixels: Double,
-    val referenceLengthCm: Double,
-    val cmPerPixel: Double,
-    val createdAtEpochMillis: Long = System.currentTimeMillis()
-)
-
-@Entity(
-    tableName = "measurements",
-    foreignKeys = [
-        ForeignKey(
-            entity = Assessment::class,
-            parentColumns = ["id"],
-            childColumns = ["assessmentId"],
-            onDelete = ForeignKey.CASCADE
-        )
-    ],
-    indices = [Index(value = ["assessmentId"], unique = true)]
-)
 data class Measurement(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
     val assessmentId: Long,
-    val woundAreaPixels: Double,
-    val woundAreaCm2: Double,
-    val measuredAtEpochMillis: Long = System.currentTimeMillis()
-)
-
-data class ExportAssessmentMeasurementRow(
-    val assessmentId: Long,
-    val assessmentCreatedAtEpochMillis: Long,
-    val assessmentStatus: String,
-    val woundAreaPixels: Double?,
-    val woundAreaCm2: Double?,
-    val measuredAtEpochMillis: Long?
+    val areaPixels: Double,
+    val createdAtEpochMillis: Long = System.currentTimeMillis()
 )
 
 @Dao
@@ -101,48 +69,19 @@ interface AssessmentDao {
     @Insert
     suspend fun insertImageAsset(imageAsset: ImageAsset): Long
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertMeasurement(measurement: Measurement): Long
+
     @Query("SELECT * FROM image_assets WHERE assessmentId = :assessmentId ORDER BY capturedAtEpochMillis DESC")
     suspend fun getAssetsForAssessment(assessmentId: Long): List<ImageAsset>
 
-    @Query("SELECT * FROM image_assets WHERE assessmentId = :assessmentId ORDER BY capturedAtEpochMillis DESC LIMIT 1")
-    suspend fun getLatestAssetForAssessment(assessmentId: Long): ImageAsset?
-
-    @Query("UPDATE assessments SET status = :status WHERE id = :assessmentId")
-    suspend fun updateAssessmentStatus(assessmentId: Long, status: String)
-
-    @Insert
-    suspend fun insertCalibrationParams(calibrationParams: CalibrationParams): Long
-
-    @Query("SELECT * FROM calibration_params WHERE assessmentId = :assessmentId ORDER BY createdAtEpochMillis DESC LIMIT 1")
-    suspend fun getLatestCalibrationForAssessment(assessmentId: Long): CalibrationParams?
-
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertMeasurement(measurement: Measurement): Long
-
-    @Query(
-        """
-        SELECT
-            a.id AS assessmentId,
-            a.createdAtEpochMillis AS assessmentCreatedAtEpochMillis,
-            a.status AS assessmentStatus,
-            m.woundAreaPixels AS woundAreaPixels,
-            m.woundAreaCm2 AS woundAreaCm2,
-            m.measuredAtEpochMillis AS measuredAtEpochMillis
-        FROM assessments a
-        LEFT JOIN measurements m ON m.assessmentId = a.id
-        WHERE a.createdAtEpochMillis BETWEEN :startEpochMillis AND :endEpochMillis
-        ORDER BY a.createdAtEpochMillis ASC
-        """
-    )
-    suspend fun getAssessmentsWithMeasurementsForRange(
-        startEpochMillis: Long,
-        endEpochMillis: Long
-    ): List<ExportAssessmentMeasurementRow>
+    @Query("SELECT * FROM measurements WHERE assessmentId = :assessmentId ORDER BY createdAtEpochMillis DESC LIMIT 1")
+    suspend fun getLatestMeasurementForAssessment(assessmentId: Long): Measurement?
 }
 
 @Database(
-    entities = [Assessment::class, ImageAsset::class, CalibrationParams::class, Measurement::class],
-    version = 4,
+    entities = [Assessment::class, ImageAsset::class, Measurement::class],
+    version = 2,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
