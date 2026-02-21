@@ -29,7 +29,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,6 +44,7 @@ fun ReviewScreen(
     viewModel: ReviewViewModel,
     onRetake: () -> Unit,
     onNextAfterSave: (needsCalibration: Boolean) -> Unit,
+    onMarkerCalibration: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val assessment by viewModel.assessment.collectAsState()
@@ -76,13 +76,14 @@ fun ReviewScreen(
         }
     }
 
-    val statusMessage = if (assessment?.imagePath == null) {
+    val activeImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
+    val statusMessage = if (activeImagePath == null) {
         "No captured image found. Please retake."
     } else {
         "Tap on wound border to add polygon points"
     }
 
-    val bitmap = assessment?.imagePath?.let { path ->
+    val bitmap = activeImagePath?.let { path ->
         BitmapFactory.decodeFile(path)?.asImageBitmap()
     }
 
@@ -97,6 +98,14 @@ fun ReviewScreen(
         SnackbarHost(hostState = snackbarHostState)
         Text(text = "Review", style = MaterialTheme.typography.headlineMedium)
         Text(text = statusMessage, style = MaterialTheme.typography.bodyMedium)
+
+        Button(
+            onClick = onMarkerCalibration,
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isSaving && assessment?.imagePath != null
+        ) {
+            Text("Marker Calibration (Recommended)")
+        }
 
         if (bitmap != null) {
             var canvasSize by remember { mutableStateOf(IntSize.Zero) }
@@ -209,77 +218,6 @@ fun ReviewScreen(
             Text("Retake")
         }
     }
-}
-
-private fun mapCanvasTapToImagePoint(
-    tap: Offset,
-    canvasSize: IntSize,
-    imageWidth: Float,
-    imageHeight: Float
-): PointF? {
-    if (canvasSize.width == 0 || canvasSize.height == 0) return null
-
-    val canvasW = canvasSize.width.toFloat()
-    val canvasH = canvasSize.height.toFloat()
-    val imageAspect = imageWidth / imageHeight
-    val canvasAspect = canvasW / canvasH
-
-    val drawnW: Float
-    val drawnH: Float
-    val left: Float
-    val top: Float
-
-    if (imageAspect > canvasAspect) {
-        drawnW = canvasW
-        drawnH = canvasW / imageAspect
-        left = 0f
-        top = (canvasH - drawnH) / 2f
-    } else {
-        drawnH = canvasH
-        drawnW = canvasH * imageAspect
-        top = 0f
-        left = (canvasW - drawnW) / 2f
-    }
-
-    if (tap.x < left || tap.x > left + drawnW || tap.y < top || tap.y > top + drawnH) return null
-
-    val normalizedX = (tap.x - left) / drawnW
-    val normalizedY = (tap.y - top) / drawnH
-
-    return PointF(normalizedX * imageWidth, normalizedY * imageHeight)
-}
-
-private fun mapImagePointToCanvasOffset(
-    point: PointF,
-    canvasSize: androidx.compose.ui.geometry.Size,
-    imageWidth: Float,
-    imageHeight: Float
-): Offset? {
-    if (canvasSize.width == 0f || canvasSize.height == 0f) return null
-
-    val imageAspect = imageWidth / imageHeight
-    val canvasAspect = canvasSize.width / canvasSize.height
-
-    val drawnW: Float
-    val drawnH: Float
-    val left: Float
-    val top: Float
-
-    if (imageAspect > canvasAspect) {
-        drawnW = canvasSize.width
-        drawnH = canvasSize.width / imageAspect
-        left = 0f
-        top = (canvasSize.height - drawnH) / 2f
-    } else {
-        drawnH = canvasSize.height
-        drawnW = canvasSize.height * imageAspect
-        top = 0f
-        left = (canvasSize.width - drawnW) / 2f
-    }
-
-    val x = left + (point.x / imageWidth) * drawnW
-    val y = top + (point.y / imageHeight) * drawnH
-    return Offset(x, y)
 }
 
 private fun isSelfIntersecting(points: List<PointF>): Boolean {

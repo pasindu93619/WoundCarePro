@@ -22,6 +22,7 @@ fun MeasurementResultScreen(
     assessmentId: String,
     viewModel: MeasurementViewModel,
     onCalibrate: () -> Unit,
+    onMarkerCalibration: () -> Unit,
     onNext: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -70,6 +71,13 @@ fun MeasurementResultScreen(
             ) {
                 Text("Calibrate")
             }
+        }
+
+        Button(
+            onClick = onMarkerCalibration,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Marker Calibration (Recommended)")
         }
 
         Button(

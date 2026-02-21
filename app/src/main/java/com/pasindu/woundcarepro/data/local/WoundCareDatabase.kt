@@ -24,7 +24,7 @@ import com.pasindu.woundcarepro.data.local.entity.Wound
         Consent::class,
         AuditLog::class
     ],
-    version = 15,
+    version = 13,
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {

@@ -74,155 +74,18 @@ object DatabaseMigrations {
 
     val MIGRATION_12_13: Migration = object : Migration(12, 13) {
         override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS wounds (
-                    woundId TEXT NOT NULL PRIMARY KEY,
-                    patientId TEXT NOT NULL,
-                    location TEXT NOT NULL,
-                    createdAtMillis INTEGER NOT NULL,
-                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE CASCADE
-                )
-                """.trimIndent()
-            )
-
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_wounds_patientId ON wounds(patientId)")
-
-            db.execSQL(
-                """
-                INSERT OR IGNORE INTO wounds(woundId, patientId, location, createdAtMillis)
-                SELECT
-                    'legacy-' || patientId,
-                    patientId,
-                    COALESCE(MAX(woundLocation), 'Unknown location'),
-                    MIN(timestamp)
-                FROM assessments
-                GROUP BY patientId
-                """.trimIndent()
-            )
-
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS assessments_new (
-                    assessmentId TEXT NOT NULL PRIMARY KEY,
-                    patientId TEXT NOT NULL,
-                    woundId TEXT NOT NULL,
-                    timestamp INTEGER NOT NULL,
-                    imagePath TEXT,
-                    outlineJson TEXT,
-                    pixelArea REAL,
-                    calibrationFactor REAL,
-                    woundLocation TEXT,
-                    guidanceMetricsJson TEXT,
-                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE SET DEFAULT,
-                    FOREIGN KEY(woundId) REFERENCES wounds(woundId) ON DELETE CASCADE
-                )
-                """.trimIndent()
-            )
-
-            db.execSQL(
-                """
-                INSERT INTO assessments_new(
-                    assessmentId,
-                    patientId,
-                    woundId,
-                    timestamp,
-                    imagePath,
-                    outlineJson,
-                    pixelArea,
-                    calibrationFactor,
-                    woundLocation,
-                    guidanceMetricsJson
-                )
-                SELECT
-                    assessmentId,
-                    patientId,
-                    'legacy-' || patientId,
-                    timestamp,
-                    imagePath,
-                    outlineJson,
-                    pixelArea,
-                    calibrationFactor,
-                    woundLocation,
-                    guidanceMetricsJson
-                FROM assessments
-                """.trimIndent()
-            )
-
-            db.execSQL("DROP TABLE assessments")
-            db.execSQL("ALTER TABLE assessments_new RENAME TO assessments")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_patientId ON assessments(patientId)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_woundId ON assessments(woundId)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_assessments_timestamp ON assessments(timestamp)")
+            val assessmentColumns = db.getColumnNames("assessments")
+            if (!assessmentColumns.contains("rectifiedImagePath")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN rectifiedImagePath TEXT")
+            }
+            if (!assessmentColumns.contains("markerCornersJson")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN markerCornersJson TEXT")
+            }
+            if (!assessmentColumns.contains("homographyJson")) {
+                db.execSQL("ALTER TABLE assessments ADD COLUMN homographyJson TEXT")
+            }
         }
     }
-
-    val MIGRATION_13_14: Migration = object : Migration(13, 14) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS consents (
-                    consentId TEXT NOT NULL PRIMARY KEY,
-                    patientId TEXT NOT NULL,
-                    timestampMillis INTEGER NOT NULL,
-                    consentGiven INTEGER NOT NULL,
-                    consentType TEXT NOT NULL,
-                    note TEXT,
-                    FOREIGN KEY(patientId) REFERENCES patients(patientId) ON DELETE CASCADE
-                )
-                """.trimIndent()
-            )
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_consents_patientId ON consents(patientId)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_consents_timestampMillis ON consents(timestampMillis)")
-
-            db.execSQL(
-                """
-                CREATE TABLE IF NOT EXISTS audit_logs (
-                    auditId TEXT NOT NULL PRIMARY KEY,
-                    timestampMillis INTEGER NOT NULL,
-                    action TEXT NOT NULL,
-                    patientId TEXT,
-                    assessmentId TEXT,
-                    metadataJson TEXT
-                )
-                """.trimIndent()
-            )
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_timestampMillis ON audit_logs(timestampMillis)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_patientId ON audit_logs(patientId)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_assessmentId ON audit_logs(assessmentId)")
-            db.execSQL("CREATE INDEX IF NOT EXISTS index_audit_logs_action ON audit_logs(action)")
-        }
-    }
-
-
-    val MIGRATION_14_15: Migration = object : Migration(14, 15) {
-        override fun migrate(db: SupportSQLiteDatabase) {
-            val now = System.currentTimeMillis()
-            db.execSQL(
-                """
-                INSERT OR IGNORE INTO patients (patientId, name, createdAt)
-                VALUES (?, ?, ?)
-                """.trimIndent(),
-                arrayOf(DEFAULT_PATIENT_ID, "Anonymous Patient", 0L)
-            )
-            db.execSQL(
-                """
-                INSERT OR IGNORE INTO wounds (woundId, patientId, location, createdAtMillis)
-                VALUES (?, ?, ?, ?)
-                """.trimIndent(),
-                arrayOf(DEFAULT_WOUND_ID, DEFAULT_PATIENT_ID, "Unspecified", now)
-            )
-            db.execSQL(
-                """
-                UPDATE assessments
-                SET woundId = ?
-                WHERE woundId NOT IN (SELECT woundId FROM wounds)
-                """.trimIndent(),
-                arrayOf(DEFAULT_WOUND_ID)
-            )
-        }
-    }
-
 }
 
 private fun SupportSQLiteDatabase.getColumnNames(tableName: String): Set<String> {

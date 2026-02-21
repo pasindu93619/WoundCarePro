@@ -24,7 +24,6 @@ class MeasurementViewModel(
         viewModelScope.launch {
             val measurement = measurementRepository.getByAssessmentId(assessmentId)
             if (measurement != null) {
-                // ✅ Measurement entity uses pixelArea, not areaPixels
                 _areaPixels.value = measurement.pixelArea
                 _areaCm2.value = measurement.areaCm2
             } else {
