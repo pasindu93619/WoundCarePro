@@ -13,6 +13,7 @@ class MeasurementViewModel(
     private val assessmentRepository: AssessmentRepository,
     private val measurementRepository: MeasurementRepository
 ) : ViewModel() {
+
     private val _areaPixels = MutableStateFlow<Double?>(null)
     val areaPixels: StateFlow<Double?> = _areaPixels
 
@@ -39,6 +40,7 @@ class MeasurementViewModelFactory(
     private val measurementRepository: MeasurementRepository
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        @Suppress("UNCHECKED_CAST")
         return MeasurementViewModel(assessmentRepository, measurementRepository) as T
     }
 }

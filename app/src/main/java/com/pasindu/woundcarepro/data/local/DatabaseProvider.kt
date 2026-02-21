@@ -2,6 +2,8 @@ package com.pasindu.woundcarepro.data.local
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.RoomDatabase
+import androidx.sqlite.db.SupportSQLiteDatabase
 
 object DatabaseProvider {
     @Volatile

@@ -1,11 +1,15 @@
 package com.pasindu.woundcarepro.data.local.repository
 
 import androidx.room.withTransaction
-import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.AssessmentDao
+import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.MeasurementDao
+import com.pasindu.woundcarepro.data.local.dao.PatientDao
+import com.pasindu.woundcarepro.data.local.dao.WoundDao
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
+import com.pasindu.woundcarepro.data.local.entity.Patient
+import com.pasindu.woundcarepro.data.local.entity.Wound
 import java.util.UUID
 
 sealed interface SaveOutlineResult {
@@ -15,6 +19,7 @@ sealed interface SaveOutlineResult {
 
 interface AssessmentRepository {
     suspend fun upsert(assessment: Assessment)
+    suspend fun createAssessment(selectedPatientId: String? = null): Assessment
     suspend fun getById(assessmentId: String): Assessment?
     suspend fun listByPatient(patientId: String): List<Assessment>
     suspend fun listRecent(): List<Assessment>
@@ -38,9 +43,49 @@ interface AssessmentRepository {
 class AssessmentRepositoryImpl(
     private val database: WoundCareDatabase,
     private val assessmentDao: AssessmentDao,
-    private val measurementDao: MeasurementDao
+    private val patientDao: PatientDao,
+    private val woundDao: WoundDao = database.woundDao(),
+    private val measurementDao: MeasurementDao,
+    private val auditRepository: AuditRepository
 ) : AssessmentRepository {
     override suspend fun upsert(assessment: Assessment) = assessmentDao.upsert(assessment)
+
+    override suspend fun createAssessment(selectedPatientId: String?): Assessment {
+        val now = System.currentTimeMillis()
+        val patientId = selectedPatientId ?: UUID.randomUUID().toString()
+
+        return database.withTransaction {
+            val patient = patientDao.getById(patientId) ?: Patient(
+                patientId = patientId,
+                name = "Unknown",
+                createdAt = now
+            )
+            patientDao.upsert(patient)
+
+            val woundId = "wound-$patientId"
+            val wound = woundDao.getById(woundId) ?: Wound(
+                woundId = woundId,
+                patientId = patientId,
+                location = "Unspecified",
+                createdAtMillis = now
+            )
+            woundDao.upsert(wound)
+
+            val assessment = Assessment(
+                assessmentId = UUID.randomUUID().toString(),
+                patientId = patientId,
+                woundId = woundId,
+                timestamp = now,
+                imagePath = null,
+                outlineJson = null,
+                pixelArea = null,
+                calibrationFactor = null,
+                guidanceMetricsJson = null
+            )
+            assessmentDao.upsert(assessment)
+            assessment
+        }
+    }
 
     override suspend fun getById(assessmentId: String): Assessment? = assessmentDao.getById(assessmentId)
 
@@ -58,6 +103,13 @@ class AssessmentRepositoryImpl(
         guidanceMetricsJson: String
     ) {
         assessmentDao.updateCaptureMetadata(assessmentId, imagePath, guidanceMetricsJson)
+        val assessment = assessmentDao.getById(assessmentId)
+        auditRepository.logAudit(
+            action = "CAPTURE_PHOTO",
+            patientId = assessment?.patientId,
+            assessmentId = assessmentId,
+            metadataJson = guidanceMetricsJson
+        )
     }
 
     override suspend fun updateMarkerCalibration(
@@ -113,6 +165,12 @@ class AssessmentRepositoryImpl(
                 outlineJson = outlineJson
             )
             measurementDao.upsert(measurement)
+            auditRepository.logAudit(
+                action = "SAVE_OUTLINE",
+                patientId = assessment.patientId,
+                assessmentId = assessmentId,
+                metadataJson = "{\"pixelArea\":$pixelArea,\"areaCm2\":${areaCm2 ?: "null"}}"
+            )
             SaveOutlineResult.Success(updatedAssessment, measurement)
         }
     }
