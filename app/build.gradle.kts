@@ -6,12 +6,12 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
-
 android {
     namespace = "com.pasindu.woundcarepro"
     compileSdk {
         version = release(36)
     }
+    ndkVersion = "26.3.11579264"
 
     defaultConfig {
         applicationId = "com.pasindu.woundcarepro"
@@ -42,6 +42,16 @@ android {
     buildFeatures {
         compose = true
     }
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
+    }
+    packaging {
+        jniLibs {
+            pickFirsts += "**/libc++_shared.so"
+        }
+    }
 }
 
 dependencies {
@@ -65,6 +75,7 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
     implementation(libs.hilt.android)
+    implementation(project(":opencv"))
 
     implementation("androidx.compose.foundation:foundation")
     ksp(libs.androidx.room.compiler)

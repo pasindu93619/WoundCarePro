@@ -1,6 +1,7 @@
 package com.pasindu.woundcarepro
 
 import android.os.Bundle
+import android.util.Log
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -45,6 +46,7 @@ import com.pasindu.woundcarepro.data.local.repository.AssessmentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.AuditRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.ConsentRepositoryImpl
 import com.pasindu.woundcarepro.data.local.repository.MeasurementRepositoryImpl
+import com.pasindu.woundcarepro.native.NativeBridge
 import com.pasindu.woundcarepro.security.AppLockManager
 import com.pasindu.woundcarepro.security.LockGateState
 import com.pasindu.woundcarepro.security.UnlockResult
@@ -73,6 +75,12 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        try {
+            val openCvVersion = NativeBridge.openCvVersion()
+            Log.d("MainActivity", "OpenCV loaded from JNI: $openCvVersion")
+        } catch (throwable: Throwable) {
+            Log.e("MainActivity", "Failed to load OpenCV JNI bridge", throwable)
+        }
         appLockManager = AppLockManager(applicationContext)
         window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)

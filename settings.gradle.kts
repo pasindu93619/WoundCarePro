@@ -21,4 +21,5 @@ dependencyResolutionManagement {
 
 rootProject.name = "WoundCarePro"
 include(":app")
- 
+include(":opencv")
+project(":opencv").projectDir = file("third_party/opencv-android-sdk/sdk/java")
