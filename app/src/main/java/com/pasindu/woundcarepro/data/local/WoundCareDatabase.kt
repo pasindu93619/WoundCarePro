@@ -1,6 +1,5 @@
 package com.pasindu.woundcarepro.data.local
 
-import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
 import androidx.room.ForeignKey
@@ -15,7 +14,8 @@ import androidx.room.RoomDatabase
 data class Assessment(
     @PrimaryKey(autoGenerate = true)
     val id: Long = 0,
-    val createdAtEpochMillis: Long = System.currentTimeMillis()
+    val createdAtEpochMillis: Long = System.currentTimeMillis(),
+    val status: String = "CREATED"
 )
 
 @Entity(
@@ -85,5 +85,10 @@ interface AssessmentDao {
     exportSchema = false
 )
 abstract class WoundCareDatabase : RoomDatabase() {
+    abstract fun patientDao(): PatientDao
+    abstract fun woundDao(): WoundDao
     abstract fun assessmentDao(): AssessmentDao
+    abstract fun measurementDao(): MeasurementDao
+    abstract fun consentDao(): ConsentDao
+    abstract fun auditLogDao(): AuditLogDao
 }
