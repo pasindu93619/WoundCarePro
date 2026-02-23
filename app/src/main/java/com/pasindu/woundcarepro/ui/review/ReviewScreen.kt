@@ -74,6 +74,36 @@ fun ReviewScreen(
         BitmapFactory.decodeFile(it)?.asImageBitmap()
     }
 
+    fun mapCanvasTapToImagePoint(
+        tap: Offset,
+        canvasSize: IntSize,
+        imageWidth: Float,
+        imageHeight: Float
+    ): Offset? {
+
+        if (canvasSize.width <= 0 || canvasSize.height <= 0) return null
+
+        val cw = canvasSize.width.toFloat()
+        val ch = canvasSize.height.toFloat()
+
+        val scale = min(cw / imageWidth, ch / imageHeight)
+        val drawnW = imageWidth * scale
+        val drawnH = imageHeight * scale
+
+        val left = (cw - drawnW) / 2f
+        val top = (ch - drawnH) / 2f
+
+        val xIn = tap.x - left
+        val yIn = tap.y - top
+
+        if (xIn < 0f || yIn < 0f || xIn > drawnW || yIn > drawnH) return null
+
+        val ix = xIn / scale
+        val iy = yIn / scale
+
+        return Offset(ix, iy)
+    }
+
     val statusMessage = when {
         activeImagePath == null -> "No captured image found. Please retake."
         uiState.isPolygonClosed -> "Polygon closed. Save to persist."
@@ -240,38 +270,6 @@ fun ReviewScreen(
             enabled = !uiState.isSaving
         ) { Text("Retake") }
     }
-}
-
-/* ---------- Helper Functions ---------- */
-
-private fun mapCanvasTapToImagePoint(
-    tap: Offset,
-    canvasSize: IntSize,
-    imageWidth: Float,
-    imageHeight: Float
-): Offset? {
-
-    if (canvasSize.width <= 0 || canvasSize.height <= 0) return null
-
-    val cw = canvasSize.width.toFloat()
-    val ch = canvasSize.height.toFloat()
-
-    val scale = min(cw / imageWidth, ch / imageHeight)
-    val drawnW = imageWidth * scale
-    val drawnH = imageHeight * scale
-
-    val left = (cw - drawnW) / 2f
-    val top = (ch - drawnH) / 2f
-
-    val xIn = tap.x - left
-    val yIn = tap.y - top
-
-    if (xIn < 0f || yIn < 0f || xIn > drawnW || yIn > drawnH) return null
-
-    val ix = xIn / scale
-    val iy = yIn / scale
-
-    return Offset(ix, iy)
 }
 
 private fun mapImagePointToCanvasOffset(
