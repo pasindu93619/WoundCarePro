@@ -16,11 +16,17 @@ class CameraViewModel @Inject constructor(
 
     fun createAssessment(
         selectedPatientId: String? = null,
-        onCreated: (String, String) -> Unit
+        onCreated: (String, String) -> Unit,
+        onError: (String) -> Unit = {}
     ) {
         viewModelScope.launch {
-            val assessment = assessmentRepository.createAssessment(selectedPatientId)
-            onCreated(assessment.assessmentId, assessment.patientId)
+            runCatching {
+                assessmentRepository.createAssessment(selectedPatientId)
+            }.onSuccess { assessment ->
+                onCreated(assessment.assessmentId, assessment.patientId)
+            }.onFailure { error ->
+                onError(error.message ?: "Unable to create assessment")
+            }
         }
     }
 

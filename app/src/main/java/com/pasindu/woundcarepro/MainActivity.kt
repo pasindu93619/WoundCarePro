@@ -269,10 +269,24 @@ private fun WoundCareNavGraph(
 
 @Composable
 private fun NewAssessmentScreen(onCreateAssessment: (String, String) -> Unit, modifier: Modifier = Modifier, viewModel: CameraViewModel = hiltViewModel()) {
+    var createError by remember { mutableStateOf<String?>(null) }
+
     Column(modifier = modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
         Text("New Assessment", style = MaterialTheme.typography.headlineMedium)
-        Button(onClick = { viewModel.createAssessment(onCreated = onCreateAssessment) }, modifier = Modifier.padding(top = 16.dp)) {
+        Button(
+            onClick = {
+                createError = null
+                viewModel.createAssessment(
+                    onCreated = onCreateAssessment,
+                    onError = { createError = it }
+                )
+            },
+            modifier = Modifier.padding(top = 16.dp)
+        ) {
             Text("Create Assessment & Open Camera")
+        }
+        createError?.let {
+            Text(it, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(top = 8.dp))
         }
     }
 }
