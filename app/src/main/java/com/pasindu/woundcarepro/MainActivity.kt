@@ -167,7 +167,7 @@ private fun WoundCareNavGraph(
     auditRepository: AuditRepositoryImpl,
     modifier: Modifier = Modifier
 ) {
-    val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository))
+    val calibrationViewModel: CalibrationViewModel = viewModel(factory = CalibrationViewModelFactory(assessmentRepository, auditRepository))
     val measurementViewModel: MeasurementViewModel = viewModel(factory = MeasurementViewModelFactory(assessmentRepository, measurementRepository))
     val markerCalibrationViewModel: MarkerCalibrationViewModel = viewModel(factory = MarkerCalibrationViewModelFactory(assessmentRepository))
     val historyViewModel: HistoryViewModel = viewModel(factory = HistoryViewModelFactory(assessmentRepository, measurementRepository))
@@ -176,10 +176,15 @@ private fun WoundCareNavGraph(
 
     NavHost(navController = navController, startDestination = Destinations.Home, modifier = modifier) {
         composable(Destinations.Home) {
-            PlaceholderScreen("Home", "New Assessment") { navController.navigate(Destinations.NewAssessment) }
+            PlaceholderScreen(
+                title = "Home",
+                next = "New Assessment",
+                onNext = { navController.navigate(Destinations.NewAssessment) }
+            )
         }
         composable(Destinations.NewAssessment) {
-            NewAssessmentScreen { assessmentId, patientId ->
+            NewAssessmentScreen(
+                onCreateAssessment = { assessmentId, patientId ->
                 scope.launch {
                     if (consentRepository.hasGrantedConsent(patientId, "PHOTO")) {
                         navController.navigate("camera_capture/$assessmentId")
@@ -187,7 +192,8 @@ private fun WoundCareNavGraph(
                         navController.navigate("consent/$assessmentId/$patientId")
                     }
                 }
-            }
+                }
+            )
         }
         composable(Destinations.ConsentRoute, arguments = listOf(
             navArgument("assessmentId") { type = NavType.StringType },
@@ -196,7 +202,12 @@ private fun WoundCareNavGraph(
             val assessmentId = entry.arguments?.getString("assessmentId") ?: return@composable
             val patientId = entry.arguments?.getString("patientId") ?: return@composable
             LaunchedEffect(assessmentId) { consentViewModel.load(assessmentId) }
-            ConsentScreen(assessmentId, patientId, consentViewModel) { navController.navigate("camera_capture/$assessmentId") }
+            ConsentScreen(
+                assessmentId = assessmentId,
+                patientId = patientId,
+                viewModel = consentViewModel,
+                onAllowed = { navController.navigate("camera_capture/$assessmentId") }
+            )
         }
         composable(Destinations.CameraCaptureRoute, arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })) { entry ->
             val assessmentId = entry.arguments?.getString("assessmentId") ?: return@composable
@@ -218,11 +229,19 @@ private fun WoundCareNavGraph(
         }
         composable(Destinations.MarkerCalibrationRoute, arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })) { entry ->
             val assessmentId = entry.arguments?.getString("assessmentId") ?: return@composable
-            MarkerCalibrationScreen(assessmentId, markerCalibrationViewModel) { navController.navigate("review/$assessmentId") }
+            MarkerCalibrationScreen(
+                assessmentId = assessmentId,
+                viewModel = markerCalibrationViewModel,
+                onRectificationSaved = { navController.navigate("review/$assessmentId") }
+            )
         }
         composable(Destinations.CalibrationRoute, arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })) { entry ->
             val assessmentId = entry.arguments?.getString("assessmentId") ?: return@composable
-            CalibrationScreen(assessmentId, calibrationViewModel) { navController.navigate("measurement_result/$assessmentId") }
+            CalibrationScreen(
+                assessmentId = assessmentId,
+                viewModel = calibrationViewModel,
+                onCalibrationSaved = { navController.navigate("measurement_result/$assessmentId") }
+            )
         }
         composable(Destinations.MeasurementResult, arguments = listOf(navArgument("assessmentId") { type = NavType.StringType })) { entry ->
             val assessmentId = entry.arguments?.getString("assessmentId") ?: return@composable
@@ -235,7 +254,10 @@ private fun WoundCareNavGraph(
             )
         }
         composable(Destinations.History) {
-            HistoryScreen(historyViewModel) { navController.navigate(Destinations.Export) }
+            HistoryScreen(
+                viewModel = historyViewModel,
+                onNext = { navController.navigate(Destinations.Export) }
+            )
         }
         composable(Destinations.Export) {
             ExportScreen(assessmentDao = DatabaseProvider.getDatabase(navController.context).assessmentDao(), onBackHome = {
@@ -321,5 +343,11 @@ private fun PlaceholderScreen(title: String, next: String, onNext: () -> Unit, m
 @Preview(showBackground = true)
 @Composable
 private fun PlaceholderScreenPreview() {
-    WoundCareProTheme { PlaceholderScreen("Home", "New Assessment") {} }
+    WoundCareProTheme {
+        PlaceholderScreen(
+            title = "Home",
+            next = "New Assessment",
+            onNext = {}
+        )
+    }
 }

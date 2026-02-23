@@ -104,12 +104,14 @@ fun CalibrationScreen(
                     .onSizeChanged { containerSize = it }
                     .pointerInput(imageBitmap, containerSize, firstPoint, secondPoint) {
                         detectTapGestures { tapOffset ->
-                            val imagePoint = mapCanvasTapToImagePoint(
+                            val mapped = mapCanvasTapToImagePoint(
                                 tap = tapOffset,
                                 canvasSize = containerSize,
                                 imageWidth = imageWidth,
                                 imageHeight = imageHeight
                             ) ?: return@detectTapGestures
+
+                            val imagePoint = mapped.toPointF()
 
                             when {
                                 firstPoint == null -> firstPoint = imagePoint

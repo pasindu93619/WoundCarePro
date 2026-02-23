@@ -100,7 +100,7 @@ fun MarkerCalibrationScreen(
                         detectTapGestures { tapOffset ->
                             val mapped = mapCanvasTapToImagePoint(tapOffset, canvasSize, imageWidth, imageHeight)
                                 ?: return@detectTapGestures
-                            viewModel.addPoint(mapped)
+                            viewModel.addPoint(mapped.toPointF())
                         }
                     }
             ) {

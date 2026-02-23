@@ -10,7 +10,7 @@ fun mapCanvasTapToImagePoint(
     canvasSize: IntSize,
     imageWidth: Float,
     imageHeight: Float
-): PointF? {
+): Offset? {
     if (canvasSize.width == 0 || canvasSize.height == 0) return null
 
     val canvasW = canvasSize.width.toFloat()
@@ -40,8 +40,10 @@ fun mapCanvasTapToImagePoint(
     val normalizedX = (tap.x - left) / drawnW
     val normalizedY = (tap.y - top) / drawnH
 
-    return PointF(normalizedX * imageWidth, normalizedY * imageHeight)
+    return Offset(normalizedX * imageWidth, normalizedY * imageHeight)
 }
+
+fun Offset.toPointF(): android.graphics.PointF = android.graphics.PointF(x, y)
 
 fun mapImagePointToCanvasOffset(
     point: PointF,
