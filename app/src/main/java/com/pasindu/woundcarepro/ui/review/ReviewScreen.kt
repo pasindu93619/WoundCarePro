@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -275,7 +276,7 @@ private fun mapCanvasTapToImagePoint(
 
 private fun mapImagePointToCanvasOffset(
     point: Offset,
-    canvasSize: androidx.compose.ui.geometry.Size,
+    canvasSize: Size,
     imageWidth: Float,
     imageHeight: Float
 ): Offset? {
