@@ -134,8 +134,8 @@ class Camera2StereoCaptureController(
 
             session.setRepeatingRequest(requestBuilder.build(), null, handler)
             isStarted = true
-            Unit
             Log.i(TAG, "Stereo capture started at ${yuvSize.width}x${yuvSize.height}")
+            Unit
         }.onFailure {
             safeCloseAll()
         }
