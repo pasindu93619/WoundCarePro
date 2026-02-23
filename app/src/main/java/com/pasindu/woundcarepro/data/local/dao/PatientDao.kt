@@ -13,6 +13,9 @@ interface PatientDao {
     @Query("SELECT * FROM patients WHERE patientId = :patientId LIMIT 1")
     suspend fun getById(patientId: String): Patient?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM patients WHERE patientId = :patientId)")
+    suspend fun exists(patientId: String): Boolean
+
     @Query("SELECT * FROM patients ORDER BY createdAt DESC")
     suspend fun listRecent(): List<Patient>
 

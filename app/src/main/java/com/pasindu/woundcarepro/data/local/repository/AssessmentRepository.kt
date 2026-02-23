@@ -10,6 +10,7 @@ import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.entity.Measurement
 import com.pasindu.woundcarepro.data.local.entity.Patient
 import com.pasindu.woundcarepro.data.local.entity.Wound
+import android.database.sqlite.SQLiteConstraintException
 import java.util.UUID
 
 sealed interface SaveOutlineResult {
@@ -18,7 +19,7 @@ sealed interface SaveOutlineResult {
 }
 
 interface AssessmentRepository {
-    suspend fun upsert(assessment: Assessment)
+    suspend fun upsert(assessment: Assessment): Result<Unit>
     suspend fun createAssessment(selectedPatientId: String? = null): Assessment
     suspend fun getById(assessmentId: String): Assessment?
     suspend fun listByPatient(patientId: String): List<Assessment>
@@ -48,44 +49,76 @@ class AssessmentRepositoryImpl(
     private val measurementDao: MeasurementDao,
     private val auditRepository: AuditRepository
 ) : AssessmentRepository {
-    override suspend fun upsert(assessment: Assessment) = assessmentDao.upsert(assessment)
+    override suspend fun upsert(assessment: Assessment): Result<Unit> {
+        return runCatching {
+            database.withTransaction {
+                val safeAssessment = ensureParentRows(assessment)
+                assessmentDao.upsert(safeAssessment)
+            }
+        }
+    }
 
     override suspend fun createAssessment(selectedPatientId: String?): Assessment {
         val now = System.currentTimeMillis()
-        val patientId = selectedPatientId ?: UUID.randomUUID().toString()
+        val patientId = selectedPatientId?.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
 
         return database.withTransaction {
-            val patient = patientDao.getById(patientId) ?: Patient(
-                patientId = patientId,
-                name = "Unknown",
-                createdAt = now
-            )
-            patientDao.upsert(patient)
-
             val woundId = "wound-$patientId"
-            val wound = woundDao.getById(woundId) ?: Wound(
-                woundId = woundId,
-                patientId = patientId,
-                location = "Unspecified",
-                createdAtMillis = now
+            val safeAssessment = ensureParentRows(
+                Assessment(
+                    assessmentId = UUID.randomUUID().toString(),
+                    patientId = patientId,
+                    woundId = woundId,
+                    timestamp = now,
+                    imagePath = null,
+                    outlineJson = null,
+                    polygonPointsJson = null,
+                    pixelArea = null,
+                    calibrationFactor = null,
+                    guidanceMetricsJson = null
+                )
             )
-            woundDao.upsert(wound)
-
-            val assessment = Assessment(
-                assessmentId = UUID.randomUUID().toString(),
-                patientId = patientId,
-                woundId = woundId,
-                timestamp = now,
-                imagePath = null,
-                outlineJson = null,
-                polygonPointsJson = null,
-                pixelArea = null,
-                calibrationFactor = null,
-                guidanceMetricsJson = null
-            )
-            assessmentDao.upsert(assessment)
-            assessment
+            try {
+                assessmentDao.upsert(safeAssessment)
+            } catch (error: SQLiteConstraintException) {
+                throw IllegalStateException("Unable to create assessment because related patient or wound is missing.", error)
+            }
+            safeAssessment
         }
+    }
+
+
+    private suspend fun ensureParentRows(assessment: Assessment): Assessment {
+        val now = System.currentTimeMillis()
+        val patientId = assessment.patientId.takeIf { it.isNotBlank() } ?: UUID.randomUUID().toString()
+        val woundId = assessment.woundId.takeIf { it.isNotBlank() } ?: "wound-$patientId"
+
+        if (!patientDao.exists(patientId)) {
+            patientDao.upsert(
+                Patient(
+                    patientId = patientId,
+                    name = "Unknown",
+                    createdAt = now
+                )
+            )
+        }
+
+        val wound = woundDao.getById(woundId)
+        when {
+            wound == null -> woundDao.upsert(
+                Wound(
+                    woundId = woundId,
+                    patientId = patientId,
+                    location = "Unspecified",
+                    createdAtMillis = now
+                )
+            )
+            wound.patientId != patientId -> woundDao.upsert(
+                wound.copy(patientId = patientId)
+            )
+        }
+
+        return assessment.copy(patientId = patientId, woundId = woundId)
     }
 
     override suspend fun getById(assessmentId: String): Assessment? = assessmentDao.getById(assessmentId)
@@ -122,9 +155,11 @@ class AssessmentRepositoryImpl(
     ): Assessment? {
         return database.withTransaction {
             val current = assessmentDao.getById(assessmentId) ?: return@withTransaction null
-            val updated = current.copy(
-                rectifiedImagePath = rectifiedImagePath,
-                calibrationFactor = calibrationFactor
+            val updated = ensureParentRows(
+                current.copy(
+                    rectifiedImagePath = rectifiedImagePath,
+                    calibrationFactor = calibrationFactor
+                )
             )
             assessmentDao.upsert(updated)
             val measurement = measurementDao.getByAssessmentId(assessmentId)
@@ -151,7 +186,7 @@ class AssessmentRepositoryImpl(
                 ?.takeIf { it > 0.0 }
                 ?.let { pixelArea * (it * it) }
 
-            val updatedAssessment = assessment.copy(outlineJson = outlineJson, pixelArea = pixelArea)
+            val updatedAssessment = ensureParentRows(assessment.copy(outlineJson = outlineJson, pixelArea = pixelArea))
             assessmentDao.upsert(updatedAssessment)
 
             val existingMeasurement = measurementDao.getByAssessmentId(assessmentId)

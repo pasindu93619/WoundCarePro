@@ -29,7 +29,8 @@ class CalibrationViewModel(
         viewModelScope.launch {
             val current = assessmentRepository.getById(assessmentId) ?: return@launch
             val updated = current.copy(calibrationFactor = calibrationFactor)
-            assessmentRepository.upsert(updated)
+            val result = assessmentRepository.upsert(updated)
+            if (result.isFailure) return@launch
             auditRepository.logAudit(
                 action = "SAVE_CALIBRATION",
                 patientId = current.patientId,
