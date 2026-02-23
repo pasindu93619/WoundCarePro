@@ -37,6 +37,7 @@ object AppModule {
             WoundCareDatabase::class.java,
             "wound-care.db"
         )
+            .fallbackToDestructiveMigration()
             .addMigrations(
                 DatabaseMigrations.MIGRATION_9_10,
                 DatabaseMigrations.MIGRATION_10_11,
