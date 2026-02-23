@@ -5,28 +5,16 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
@@ -37,6 +25,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import kotlin.math.min
 
 @Composable
 fun ReviewScreen(
@@ -49,10 +38,13 @@ fun ReviewScreen(
 ) {
     val assessment by viewModel.assessment.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
 
-    LaunchedEffect(assessmentId) { viewModel.loadAssessment(assessmentId) }
+    LaunchedEffect(assessmentId) {
+        viewModel.loadAssessment(assessmentId)
+    }
 
     LaunchedEffect(uiState.saveError) {
         uiState.saveError?.let { msg ->
@@ -70,12 +62,16 @@ fun ReviewScreen(
 
     LaunchedEffect(uiState.needsCalibration) {
         if (uiState.needsCalibration) {
-            coroutineScope.launch { snackbarHostState.showSnackbar("Calibration needed for cm²") }
+            coroutineScope.launch {
+                snackbarHostState.showSnackbar("Calibration needed for cm²")
+            }
         }
     }
 
     val activeImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
-    val bitmap = activeImagePath?.let { path -> BitmapFactory.decodeFile(path)?.asImageBitmap() }
+    val bitmap = activeImagePath?.let {
+        BitmapFactory.decodeFile(it)?.asImageBitmap()
+    }
 
     val statusMessage = when {
         activeImagePath == null -> "No captured image found. Please retake."
@@ -92,90 +88,113 @@ fun ReviewScreen(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         SnackbarHost(hostState = snackbarHostState)
+
         Text("Review", style = MaterialTheme.typography.headlineMedium)
-        Text(statusMessage)
+        Text(statusMessage, style = MaterialTheme.typography.bodyMedium)
 
-        if (bitmap != null) {
-            var canvasPx by remember { mutableStateOf(IntSize.Zero) }
-            val imageWidth = bitmap.width.toFloat()
-            val imageHeight = bitmap.height.toFloat()
-
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                    .background(Color.Black)
-                    .onSizeChanged { canvasPx = it }
-                    .pointerInput(bitmap, uiState.points, uiState.isPolygonClosed, canvasPx) {
-                        detectTapGestures { tap ->
-                            if (uiState.isPolygonClosed) return@detectTapGestures
-
-                            val mapped = mapCanvasTapToImagePoint(
-                                tap = tap,
-                                canvasSize = canvasPx,
-                                imageWidth = imageWidth,
-                                imageHeight = imageHeight
-                            ) ?: return@detectTapGestures
-
-                            viewModel.addPoint(mapped.toPointF())
-                        }
-                    }
+        if (bitmap == null) {
+            Text(
+                "No image loaded. Please retake.",
+                color = MaterialTheme.colorScheme.error
+            )
+            Button(
+                onClick = onRetake,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Image(
-                    bitmap = bitmap,
-                    contentDescription = "Captured wound photo",
-                    contentScale = ContentScale.Fit,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Text("Retake")
+            }
+            return@Column
+        }
 
-                Canvas(modifier = Modifier.fillMaxSize()) {
-                    val mappedPoints = uiState.points.mapNotNull { point ->
-                        mapImagePointToCanvasOffset(
-                            point = point,
-                            canvasSize = size,
+        var canvasPx by remember { mutableStateOf(IntSize.Zero) }
+        val imageWidth = bitmap.width.toFloat()
+        val imageHeight = bitmap.height.toFloat()
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .background(Color.Black)
+                .onSizeChanged { canvasPx = it }
+                .pointerInput(bitmap, uiState.points, uiState.isPolygonClosed, canvasPx) {
+                    detectTapGestures { tap ->
+                        if (uiState.isPolygonClosed) return@detectTapGestures
+
+                        val mapped = mapCanvasTapToImagePoint(
+                            tap = tap,
+                            canvasSize = canvasPx,
                             imageWidth = imageWidth,
                             imageHeight = imageHeight
-                        )
-                    }
+                        ) ?: return@detectTapGestures
 
-                    if (mappedPoints.size >= 2) {
-                        for (i in 0 until mappedPoints.lastIndex) {
-                            drawLine(
-                                color = Color.Red,
-                                start = mappedPoints[i],
-                                end = mappedPoints[i + 1],
-                                strokeWidth = 4f
-                            )
-                        }
+                        viewModel.addPoint(mapped)
                     }
+                }
+        ) {
+            Image(
+                bitmap = bitmap,
+                contentDescription = "Captured wound photo",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize()
+            )
 
-                    if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
+            Canvas(modifier = Modifier.fillMaxSize()) {
+
+                val mappedPoints = uiState.points.mapNotNull { point ->
+                    mapImagePointToCanvasOffset(
+                        point = point,
+                        canvasSize = size,
+                        imageWidth = imageWidth,
+                        imageHeight = imageHeight
+                    )
+                }
+
+                // Draw points
+                mappedPoints.forEach { c ->
+                    drawCircle(Color.Yellow, 8f, c)
+                    drawCircle(Color.Black, 8f, c, style = Stroke(width = 2f))
+                }
+
+                // Draw lines
+                if (mappedPoints.size >= 2) {
+                    for (i in 0 until mappedPoints.lastIndex) {
                         drawLine(
                             color = Color.Red,
-                            start = mappedPoints.last(),
-                            end = mappedPoints.first(),
+                            start = mappedPoints[i],
+                            end = mappedPoints[i + 1],
                             strokeWidth = 4f
                         )
+                    }
+                }
 
-                        val poly = Path().apply {
-                            moveTo(mappedPoints.first().x, mappedPoints.first().y)
-                            for (i in 1 until mappedPoints.size) {
-                                lineTo(mappedPoints[i].x, mappedPoints[i].y)
-                            }
-                            close()
+                // Close + fill polygon
+                if (mappedPoints.size >= 3 && uiState.isPolygonClosed) {
+                    drawLine(
+                        color = Color.Red,
+                        start = mappedPoints.last(),
+                        end = mappedPoints.first(),
+                        strokeWidth = 4f
+                    )
+
+                    val poly = Path().apply {
+                        moveTo(mappedPoints.first().x, mappedPoints.first().y)
+                        for (i in 1 until mappedPoints.size) {
+                            lineTo(mappedPoints[i].x, mappedPoints[i].y)
                         }
-                        drawPath(poly, color = Color.Red.copy(alpha = 0.25f))
+                        close()
                     }
 
-                    mappedPoints.forEach { c ->
-                        drawCircle(color = Color.Yellow, radius = 8f, center = c)
-                        drawCircle(color = Color.Black, radius = 8f, center = c, style = Stroke(width = 2f))
-                    }
+                    drawPath(poly, Color.Red.copy(alpha = 0.25f))
                 }
             }
         }
 
-        Text("Pixel area: ${uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"}")
+        Text(
+            text = "Pixel area: ${
+                uiState.pixelArea?.let { String.format("%.2f", it) } ?: "-"
+            }",
+            style = MaterialTheme.typography.bodyMedium
+        )
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -184,22 +203,27 @@ fun ReviewScreen(
             Button(
                 onClick = { viewModel.undoLastPoint() },
                 modifier = Modifier.weight(1f),
-                enabled = !uiState.isSaving
+                enabled = !uiState.isSaving && uiState.points.isNotEmpty()
             ) { Text("Undo") }
+
             Button(
                 onClick = { viewModel.closePolygon() },
-                enabled = uiState.points.size >= 3 && !uiState.isPolygonClosed,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = uiState.points.size >= 3 &&
+                        !uiState.isPolygonClosed &&
+                        !uiState.isSaving
             ) { Text("Close") }
+
             Button(
                 onClick = { viewModel.clearPoints() },
                 modifier = Modifier.weight(1f),
-                enabled = !uiState.isSaving
+                enabled = !uiState.isSaving && uiState.points.isNotEmpty()
             ) { Text("Clear") }
+
             Button(
                 onClick = { viewModel.saveOutline(assessmentId) },
-                enabled = uiState.isPolygonClosed && !uiState.isSaving,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                enabled = uiState.isPolygonClosed && !uiState.isSaving
             ) { Text("Save") }
         }
 
@@ -215,4 +239,61 @@ fun ReviewScreen(
             enabled = !uiState.isSaving
         ) { Text("Retake") }
     }
+}
+
+/* ---------- Helper Functions ---------- */
+
+private fun mapCanvasTapToImagePoint(
+    tap: Offset,
+    canvasSize: IntSize,
+    imageWidth: Float,
+    imageHeight: Float
+): Offset? {
+
+    if (canvasSize.width <= 0 || canvasSize.height <= 0) return null
+
+    val cw = canvasSize.width.toFloat()
+    val ch = canvasSize.height.toFloat()
+
+    val scale = min(cw / imageWidth, ch / imageHeight)
+    val drawnW = imageWidth * scale
+    val drawnH = imageHeight * scale
+
+    val left = (cw - drawnW) / 2f
+    val top = (ch - drawnH) / 2f
+
+    val xIn = tap.x - left
+    val yIn = tap.y - top
+
+    if (xIn < 0f || yIn < 0f || xIn > drawnW || yIn > drawnH) return null
+
+    val ix = xIn / scale
+    val iy = yIn / scale
+
+    return Offset(ix, iy)
+}
+
+private fun mapImagePointToCanvasOffset(
+    point: Offset,
+    canvasSize: androidx.compose.ui.geometry.Size,
+    imageWidth: Float,
+    imageHeight: Float
+): Offset? {
+
+    val cw = canvasSize.width
+    val ch = canvasSize.height
+
+    if (cw <= 0f || ch <= 0f) return null
+
+    val scale = min(cw / imageWidth, ch / imageHeight)
+    val drawnW = imageWidth * scale
+    val drawnH = imageHeight * scale
+
+    val left = (cw - drawnW) / 2f
+    val top = (ch - drawnH) / 2f
+
+    val cx = left + point.x * scale
+    val cy = top + point.y * scale
+
+    return Offset(cx, cy)
 }
