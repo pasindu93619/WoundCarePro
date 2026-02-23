@@ -1,6 +1,7 @@
 package com.pasindu.woundcarepro.ui.review
 
 import android.graphics.BitmapFactory
+import android.graphics.PointF
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -158,7 +159,8 @@ fun ReviewScreen(
                             imageHeight = imageHeight
                         ) ?: return@detectTapGestures
 
-                        viewModel.addPoint(mapped)
+                        val imagePoint = PointF(mapped.x, mapped.y)
+                        viewModel.addPoint(imagePoint)
                     }
                 }
         ) {
