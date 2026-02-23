@@ -84,7 +84,7 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
 
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.appcompat)
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
