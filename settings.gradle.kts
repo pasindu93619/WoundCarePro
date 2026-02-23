@@ -11,6 +11,7 @@ pluginManagement {
         gradlePluginPortal()
     }
 }
+
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -21,5 +22,3 @@ dependencyResolutionManagement {
 
 rootProject.name = "WoundCarePro"
 include(":app")
-include(":opencv")
-project(":opencv").projectDir = file("third_party/opencv-android-sdk/sdk/java")
