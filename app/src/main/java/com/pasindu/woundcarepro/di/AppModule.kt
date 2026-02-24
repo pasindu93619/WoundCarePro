@@ -37,12 +37,15 @@ object AppModule {
             WoundCareDatabase::class.java,
             "wound-care.db"
         )
-            .fallbackToDestructiveMigration()
-            .addMigrations(
+                        .addMigrations(
                 DatabaseMigrations.MIGRATION_9_10,
                 DatabaseMigrations.MIGRATION_10_11,
                 DatabaseMigrations.MIGRATION_11_12,
-                DatabaseMigrations.MIGRATION_12_13
+                DatabaseMigrations.MIGRATION_12_13,
+                DatabaseMigrations.MIGRATION_13_14,
+                DatabaseMigrations.MIGRATION_14_15,
+                DatabaseMigrations.MIGRATION_15_16,
+                DatabaseMigrations.MIGRATION_16_17
             )
             .addCallback(object : RoomDatabase.Callback() {
                 override fun onCreate(db: SupportSQLiteDatabase) {
