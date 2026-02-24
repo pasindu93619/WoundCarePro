@@ -39,7 +39,13 @@ data class Assessment(
     val rectifiedImagePath: String? = null,
     val outlineJson: String?,
     val polygonPointsJson: String?,
+    val finalOutlineJson: String? = null,
+    val finalPolygonPointsJson: String? = null,
     val pixelArea: Double?,
+    val finalPixelArea: Double? = null,
+    val finalAreaCm2: Double? = null,
+    val finalPerimeterPx: Double? = null,
+    val finalSavedAtMillis: Long? = null,
     val calibrationFactor: Double?,
     val woundLocation: String? = null,
     val guidanceMetricsJson: String? = null
