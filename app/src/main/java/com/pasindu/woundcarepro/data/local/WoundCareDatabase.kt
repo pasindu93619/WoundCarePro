@@ -28,7 +28,7 @@ import com.pasindu.woundcarepro.data.local.entity.Wound
         AuditLog::class
     ],
     version = 17,
-    exportSchema = false
+    exportSchema = true
 )
 abstract class WoundCareDatabase : RoomDatabase() {
     abstract fun patientDao(): PatientDao
