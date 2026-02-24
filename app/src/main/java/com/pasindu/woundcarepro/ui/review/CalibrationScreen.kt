@@ -157,11 +157,21 @@ fun CalibrationScreen(
 
                     startOffset?.let {
                         drawCircle(color = Color.Yellow, radius = 12f, center = it)
-                        drawCircle(color = Color.Black, radius = 12f, center = it, style = Stroke(width = 3f))
+                        drawCircle(
+                            color = Color.Black,
+                            radius = 12f,
+                            center = it,
+                            style = Stroke(width = 3f)
+                        )
                     }
                     endOffset?.let {
                         drawCircle(color = Color.Yellow, radius = 12f, center = it)
-                        drawCircle(color = Color.Black, radius = 12f, center = it, style = Stroke(width = 3f))
+                        drawCircle(
+                            color = Color.Black,
+                            radius = 12f,
+                            center = it,
+                            style = Stroke(width = 3f)
+                        )
                     }
                 }
             }
