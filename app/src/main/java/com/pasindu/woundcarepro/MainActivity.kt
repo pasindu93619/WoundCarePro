@@ -223,7 +223,7 @@ private fun WoundCareNavGraph(
                 assessmentId = assessmentId,
                 viewModel = hiltViewModel(),
                 onRetake = { navController.popBackStack() },
-                onNextAfterSave = { needsCalibration -> navController.navigate(if (needsCalibration) "calibration/$assessmentId" else "measurement_result/$assessmentId") },
+                onSaveSuccess = { navController.popBackStack(Destinations.NewAssessment, false) },
                 onMarkerCalibration = { navController.navigate("marker_calibration/$assessmentId") }
             )
         }
