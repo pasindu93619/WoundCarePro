@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -48,19 +49,20 @@ fun ReviewScreen(
         viewModel.loadAssessment(assessmentId)
     }
 
-    LaunchedEffect(uiState.saveError) {
-        uiState.saveError?.let { msg ->
-            coroutineScope.launch { snackbarHostState.showSnackbar(msg) }
-            viewModel.clearTransientState()
+    LaunchedEffect(uiState.saveState) {
+        when (val saveState = uiState.saveState) {
+            is FinalOutlineSaveState.Error -> {
+                coroutineScope.launch { snackbarHostState.showSnackbar(saveState.message) }
+                viewModel.clearTransientState()
+            }
+            FinalOutlineSaveState.Saved -> {
+                onNextAfterSave(uiState.needsCalibration)
+                viewModel.clearTransientState()
+            }
+            FinalOutlineSaveState.Idle, FinalOutlineSaveState.Saving -> Unit
         }
     }
 
-    LaunchedEffect(uiState.saveSuccess) {
-        if (uiState.saveSuccess) {
-            onNextAfterSave(uiState.needsCalibration)
-            viewModel.clearTransientState()
-        }
-    }
 
     LaunchedEffect(uiState.needsCalibration) {
         if (uiState.needsCalibration) {
@@ -108,6 +110,8 @@ fun ReviewScreen(
     val statusMessage = when {
         activeImagePath == null -> "No captured image found. Please retake."
         uiState.isPolygonClosed -> "Polygon closed. Save to persist."
+        uiState.saveState == FinalOutlineSaveState.Saving -> "Saving final outline..."
+        uiState.saveState == FinalOutlineSaveState.Saved -> "Final outline saved"
         else -> "Tap on wound border to add polygon points"
     }
 
@@ -236,7 +240,7 @@ fun ReviewScreen(
             Button(
                 onClick = { viewModel.undoLastPoint() },
                 modifier = Modifier.weight(1f),
-                enabled = !uiState.isSaving && uiState.points.isNotEmpty()
+                enabled = uiState.saveState != FinalOutlineSaveState.Saving && uiState.points.isNotEmpty()
             ) { Text("Undo") }
 
             Button(
@@ -244,32 +248,38 @@ fun ReviewScreen(
                 modifier = Modifier.weight(1f),
                 enabled = uiState.points.size >= 3 &&
                         !uiState.isPolygonClosed &&
-                        !uiState.isSaving
+                        uiState.saveState != FinalOutlineSaveState.Saving
             ) { Text("Close") }
 
             Button(
                 onClick = { viewModel.clearPoints() },
                 modifier = Modifier.weight(1f),
-                enabled = !uiState.isSaving && uiState.points.isNotEmpty()
+                enabled = uiState.saveState != FinalOutlineSaveState.Saving && uiState.points.isNotEmpty()
             ) { Text("Clear") }
 
             Button(
-                onClick = { viewModel.saveOutline(assessmentId) },
+                onClick = { viewModel.saveFinalOutline(assessmentId) },
                 modifier = Modifier.weight(1f),
-                enabled = uiState.isPolygonClosed && !uiState.isSaving
-            ) { Text("Save") }
+                enabled = uiState.isPolygonClosed && uiState.saveState != FinalOutlineSaveState.Saving
+            ) {
+                if (uiState.saveState == FinalOutlineSaveState.Saving) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Save")
+                }
+            }
         }
 
         Button(
             onClick = onMarkerCalibration,
             modifier = Modifier.fillMaxWidth(),
-            enabled = !uiState.isSaving
+            enabled = uiState.saveState != FinalOutlineSaveState.Saving
         ) { Text("Marker Calibration") }
 
         Button(
             onClick = onRetake,
             modifier = Modifier.fillMaxWidth(),
-            enabled = !uiState.isSaving
+            enabled = uiState.saveState != FinalOutlineSaveState.Saving
         ) { Text("Retake") }
     }
 }

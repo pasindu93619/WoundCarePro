@@ -46,7 +46,7 @@ interface AssessmentRepository {
         finalPixelArea: Double,
         finalAreaCm2: Double,
         finalPerimeterPx: Double
-    )
+    ): Result<Unit>
 }
 
 class AssessmentRepositoryImpl(
@@ -224,10 +224,11 @@ class AssessmentRepositoryImpl(
         finalPixelArea: Double,
         finalAreaCm2: Double,
         finalPerimeterPx: Double
-    ) {
+    ): Result<Unit> = runCatching {
         val now = System.currentTimeMillis()
         database.withTransaction {
-            val assessment = assessmentDao.getById(assessmentId) ?: return@withTransaction
+            val assessment = assessmentDao.getById(assessmentId)
+                ?: throw IllegalArgumentException("Assessment not found")
             val finalSavedAtMillis = assessment.finalSavedAtMillis ?: now
 
             assessmentDao.updateFinalOutlineAndMetrics(
