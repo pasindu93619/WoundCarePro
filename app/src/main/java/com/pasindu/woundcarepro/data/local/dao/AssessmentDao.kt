@@ -27,6 +27,28 @@ interface AssessmentDao {
     )
     suspend fun updateCaptureMetadata(assessmentId: String, imagePath: String, guidanceMetricsJson: String)
 
+    @Query(
+        """
+        UPDATE assessments
+        SET finalOutlineJson = :finalOutlineJson,
+            finalPolygonPointsJson = :finalPolygonPointsJson,
+            finalPixelArea = :finalPixelArea,
+            finalAreaCm2 = :finalAreaCm2,
+            finalPerimeterPx = :finalPerimeterPx,
+            finalSavedAtMillis = :finalSavedAtMillis
+        WHERE assessmentId = :assessmentId
+        """
+    )
+    suspend fun updateFinalOutlineAndMetrics(
+        assessmentId: String,
+        finalOutlineJson: String?,
+        finalPolygonPointsJson: String?,
+        finalPixelArea: Double?,
+        finalAreaCm2: Double?,
+        finalPerimeterPx: Double?,
+        finalSavedAtMillis: Long?
+    )
+
     @Query("DELETE FROM assessments WHERE assessmentId = :assessmentId")
     suspend fun delete(assessmentId: String)
 
