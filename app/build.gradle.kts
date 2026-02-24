@@ -107,6 +107,9 @@ dependencies {
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
 
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.room.compiler)
