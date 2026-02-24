@@ -39,6 +39,14 @@ interface AssessmentRepository {
         outlineJson: String,
         pixelArea: Double
     ): SaveOutlineResult
+    suspend fun saveFinalOutlineToAssessment(
+        assessmentId: String,
+        finalOutlineJson: String,
+        finalPolygonPointsJson: String,
+        finalPixelArea: Double,
+        finalAreaCm2: Double,
+        finalPerimeterPx: Double
+    )
 }
 
 class AssessmentRepositoryImpl(
@@ -206,6 +214,58 @@ class AssessmentRepositoryImpl(
                 metadataJson = "{\"pixelArea\":$pixelArea,\"areaCm2\":${areaCm2 ?: "null"}}"
             )
             SaveOutlineResult.Success(updatedAssessment, measurement)
+        }
+    }
+
+    override suspend fun saveFinalOutlineToAssessment(
+        assessmentId: String,
+        finalOutlineJson: String,
+        finalPolygonPointsJson: String,
+        finalPixelArea: Double,
+        finalAreaCm2: Double,
+        finalPerimeterPx: Double
+    ) {
+        val now = System.currentTimeMillis()
+        database.withTransaction {
+            val assessment = assessmentDao.getById(assessmentId) ?: return@withTransaction
+            val finalSavedAtMillis = assessment.finalSavedAtMillis ?: now
+
+            assessmentDao.updateFinalOutlineAndMetrics(
+                assessmentId = assessmentId,
+                finalOutlineJson = finalOutlineJson,
+                finalPolygonPointsJson = finalPolygonPointsJson,
+                finalPixelArea = finalPixelArea,
+                finalAreaCm2 = finalAreaCm2,
+                finalPerimeterPx = finalPerimeterPx,
+                finalSavedAtMillis = finalSavedAtMillis
+            )
+
+            val existingMeasurement = measurementDao.getByAssessmentId(assessmentId)
+            val measurement = if (existingMeasurement != null) {
+                existingMeasurement.copy(
+                    createdAtMillis = finalSavedAtMillis,
+                    pixelArea = finalPixelArea,
+                    areaCm2 = finalAreaCm2,
+                    outlineJson = finalOutlineJson
+                )
+            } else {
+                Measurement(
+                    measurementId = UUID.randomUUID().toString(),
+                    assessmentId = assessmentId,
+                    createdAtMillis = finalSavedAtMillis,
+                    pixelArea = finalPixelArea,
+                    areaCm2 = finalAreaCm2,
+                    outlineJson = finalOutlineJson
+                )
+            }
+            measurementDao.upsert(measurement)
+
+            auditRepository.logAudit(
+                action = "SAVE_FINAL_OUTLINE",
+                patientId = assessment.patientId,
+                assessmentId = assessmentId,
+                metadataJson = "{\"finalPixelArea\":$finalPixelArea,\"finalAreaCm2\":$finalAreaCm2,\"finalPerimeterPx\":$finalPerimeterPx}"
+            )
         }
     }
 }
