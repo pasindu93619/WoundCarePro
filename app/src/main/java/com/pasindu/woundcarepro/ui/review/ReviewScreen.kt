@@ -2,6 +2,7 @@ package com.pasindu.woundcarepro.ui.review
 
 import android.graphics.BitmapFactory
 import android.graphics.PointF
+import android.widget.Toast
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -14,6 +15,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -35,12 +37,13 @@ fun ReviewScreen(
     assessmentId: String,
     viewModel: ReviewViewModel,
     onRetake: () -> Unit,
-    onNextAfterSave: (needsCalibration: Boolean) -> Unit,
+    onSaveSuccess: () -> Unit,
     onMarkerCalibration: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val assessment by viewModel.assessment.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
@@ -56,7 +59,8 @@ fun ReviewScreen(
                 viewModel.clearTransientState()
             }
             FinalOutlineSaveState.Saved -> {
-                onNextAfterSave(uiState.needsCalibration)
+                Toast.makeText(context, "Saved", Toast.LENGTH_SHORT).show()
+                onSaveSuccess()
                 viewModel.clearTransientState()
             }
             FinalOutlineSaveState.Idle, FinalOutlineSaveState.Saving -> Unit
