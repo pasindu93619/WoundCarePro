@@ -104,6 +104,7 @@ fun CalibrationScreen(
             val imageHeight = imageBitmap.height.toFloat()
 
             Box(
+                // Use the public Modifier.weight API on the Box, a direct child of Column.
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f)
