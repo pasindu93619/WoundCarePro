@@ -98,7 +98,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
     implementation("androidx.compose.foundation:foundation")
-    implementation("org.tensorflow:tensorflow-lite:2.14.0")
+
+    // ✅ TensorFlow Lite (keep ONE version only)
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
     implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
     implementation(libs.androidx.navigation.compose)
@@ -114,9 +116,6 @@ dependencies {
 
     implementation(libs.androidx.security.crypto)
     implementation(libs.google.gson)
-
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
 
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

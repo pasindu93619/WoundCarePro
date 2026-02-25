@@ -70,7 +70,6 @@ fun ReviewScreen(
         }
     }
 
-
     LaunchedEffect(uiState.needsCalibration) {
         if (uiState.needsCalibration) {
             coroutineScope.launch {
@@ -84,6 +83,7 @@ fun ReviewScreen(
     val bitmap = activeImagePath?.let {
         BitmapFactory.decodeFile(it)?.asImageBitmap()
     }
+
     var showReplaceOutlineDialog by remember { mutableStateOf(false) }
 
     fun mapCanvasTapToImagePoint(
@@ -187,6 +187,7 @@ fun ReviewScreen(
             Canvas(modifier = Modifier.fillMaxSize()) {
 
                 val mappedAiPoints = uiState.aiBoundaryPoints.mapNotNull { point ->
+                    // IMPORTANT: this uses the shared helper in ImageCoordinateMapper.kt
                     mapImagePointToCanvasOffset(
                         point = point,
                         canvasSize = size,
@@ -216,6 +217,7 @@ fun ReviewScreen(
                 }
 
                 val mappedPoints = uiState.points.mapNotNull { point ->
+                    // IMPORTANT: this uses the shared helper in ImageCoordinateMapper.kt
                     mapImagePointToCanvasOffset(
                         point = point,
                         canvasSize = size,
@@ -406,29 +408,4 @@ fun ReviewScreen(
             enabled = uiState.saveState != FinalOutlineSaveState.Saving
         ) { Text("Retake") }
     }
-}
-
-private fun mapImagePointToCanvasOffset(
-    point: PointF,
-    canvasSize: Size,
-    imageWidth: Float,
-    imageHeight: Float
-): Offset? {
-
-    val cw = canvasSize.width
-    val ch = canvasSize.height
-
-    if (cw <= 0f || ch <= 0f) return null
-
-    val scale = min(cw / imageWidth, ch / imageHeight)
-    val drawnW = imageWidth * scale
-    val drawnH = imageHeight * scale
-
-    val left = (cw - drawnW) / 2f
-    val top = (ch - drawnH) / 2f
-
-    val cx = left + point.x * scale
-    val cy = top + point.y * scale
-
-    return Offset(cx, cy)
 }
