@@ -16,4 +16,5 @@ interface AiSegmentationRepository {
     )
     suspend fun getByAssessmentId(assessmentId: String): AiSegmentationResult?
     suspend fun deleteByAssessmentId(assessmentId: String)
+    suspend fun logSegmentationFailure(assessmentId: String, reason: String)
 }

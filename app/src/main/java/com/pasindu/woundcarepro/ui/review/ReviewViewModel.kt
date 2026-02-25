@@ -180,9 +180,14 @@ class ReviewViewModel @Inject constructor(
                     aiConfidence = segmentationOutput.confidence
                 )
             }.onFailure { error ->
+                val userFacingMessage = "AI model is unavailable right now. Please reinstall/update the app model and try again."
+                aiSegmentationRepository.logSegmentationFailure(
+                    assessmentId = assessmentId,
+                    reason = error.message ?: "Unknown segmentation failure"
+                )
                 _uiState.value = _uiState.value.copy(
                     isAiRunning = false,
-                    aiError = error.message ?: "AI segmentation failed"
+                    aiError = userFacingMessage
                 )
             }
         }

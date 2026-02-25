@@ -96,4 +96,21 @@ class AiSegmentationRepositoryImpl @Inject constructor(
     override suspend fun deleteByAssessmentId(assessmentId: String) {
         aiSegmentationResultDao.deleteByAssessmentId(assessmentId)
     }
+
+    override suspend fun logSegmentationFailure(assessmentId: String, reason: String) {
+        val metadataJson = JSONObject()
+            .put("status", "failed")
+            .put("reason", reason)
+            .toString()
+        auditLogDao.insert(
+            AuditLog(
+                auditId = UUID.randomUUID().toString(),
+                timestampMillis = System.currentTimeMillis(),
+                action = "AI_SEGMENTATION_FAILED",
+                patientId = null,
+                assessmentId = assessmentId,
+                metadataJson = metadataJson
+            )
+        )
+    }
 }
