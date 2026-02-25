@@ -103,7 +103,9 @@ dependencies {
 
     // ✅ TensorFlow Lite (keep ONE version only)
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    implementation("org.tensorflow:tensorflow-lite-support:0.4.4") {
+        exclude(group = "org.tensorflow", module = "tensorflow-lite-api")
+    }
 
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
