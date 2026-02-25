@@ -76,7 +76,9 @@ android {
             version = "3.22.1"
         }
     }
-
+    androidResources {
+        noCompress += "tflite"
+    }
     packaging {
         jniLibs {
             // Avoid duplicate libc++ if any dependency also includes it
