@@ -14,3 +14,12 @@
 .cxx
 local.properties
 third_party/opencv-android-sdk/
+# Local build logs
+build_full.txt
+build_log.txt
+error.txt
+
+
+# Room schema export (optional)
+app/schemas/
+
