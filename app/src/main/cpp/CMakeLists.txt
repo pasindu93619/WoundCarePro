@@ -18,6 +18,13 @@ set_target_properties(opencv_java4 PROPERTIES
         IMPORTED_LOCATION "${OpenCV_LIB_DIR}/libopencv_java4.so"
 )
 
+# ✅ Android 15+ 16KB page-size compatibility: align LOAD segments
+# Fixes "LOAD segments not aligned at 16 KB boundaries" for libwound_native.so
+target_link_options(wound_native PRIVATE
+        "-Wl,-z,max-page-size=16384"
+        "-Wl,-z,common-page-size=4096"
+)
+
 target_link_libraries(
         wound_native
         opencv_java4
