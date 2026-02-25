@@ -2,6 +2,7 @@ package com.pasindu.woundcarepro.di
 
 import com.pasindu.woundcarepro.data.local.WoundCareDatabase
 import com.pasindu.woundcarepro.data.local.dao.AiSegmentationResultDao
+import com.pasindu.woundcarepro.data.local.dao.AuditLogDao
 import com.pasindu.woundcarepro.data.repository.AiSegmentationRepository
 import com.pasindu.woundcarepro.data.repository.AiSegmentationRepositoryImpl
 import dagger.Binds
@@ -21,6 +22,14 @@ object AiSegmentationDaoModule {
         database: WoundCareDatabase
     ): AiSegmentationResultDao {
         return database.aiSegmentationResultDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAuditLogDao(
+        database: WoundCareDatabase
+    ): AuditLogDao {
+        return database.auditLogDao()
     }
 }
 
