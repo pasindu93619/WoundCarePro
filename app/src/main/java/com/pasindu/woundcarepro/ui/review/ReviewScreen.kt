@@ -9,10 +9,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -77,9 +80,11 @@ fun ReviewScreen(
     }
 
     val activeImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
+    val bestImagePath = assessment?.rectifiedImagePath ?: assessment?.imagePath
     val bitmap = activeImagePath?.let {
         BitmapFactory.decodeFile(it)?.asImageBitmap()
     }
+    var showReplaceOutlineDialog by remember { mutableStateOf(false) }
 
     fun mapCanvasTapToImagePoint(
         tap: Offset,
@@ -181,6 +186,35 @@ fun ReviewScreen(
 
             Canvas(modifier = Modifier.fillMaxSize()) {
 
+                val mappedAiPoints = uiState.aiBoundaryPoints.mapNotNull { point ->
+                    mapImagePointToCanvasOffset(
+                        point = point,
+                        canvasSize = size,
+                        imageWidth = imageWidth,
+                        imageHeight = imageHeight
+                    )
+                }
+
+                if (mappedAiPoints.size >= 2) {
+                    for (i in 0 until mappedAiPoints.lastIndex) {
+                        drawLine(
+                            color = Color.Cyan,
+                            start = mappedAiPoints[i],
+                            end = mappedAiPoints[i + 1],
+                            strokeWidth = 5f
+                        )
+                    }
+                }
+
+                if (mappedAiPoints.size >= 3) {
+                    drawLine(
+                        color = Color.Cyan,
+                        start = mappedAiPoints.last(),
+                        end = mappedAiPoints.first(),
+                        strokeWidth = 5f
+                    )
+                }
+
                 val mappedPoints = uiState.points.mapNotNull { point ->
                     mapImagePointToCanvasOffset(
                         point = point,
@@ -237,6 +271,92 @@ fun ReviewScreen(
             style = MaterialTheme.typography.bodyMedium
         )
 
+        Button(
+            onClick = {
+                val path = bestImagePath ?: return@Button
+                viewModel.runAiSegmentation(assessmentId, path)
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !uiState.isAiRunning && bestImagePath != null && uiState.saveState != FinalOutlineSaveState.Saving
+        ) {
+            Text("Auto Outline (AI)")
+        }
+
+        if (uiState.isAiRunning) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                Text("Analyzing…")
+            }
+        }
+
+        if (!uiState.aiError.isNullOrBlank()) {
+            Text(
+                text = uiState.aiError ?: "",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        if (uiState.aiBoundaryPoints.isNotEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text("AI Tissue Estimate", style = MaterialTheme.typography.titleSmall)
+                    uiState.aiTissuePercents.entries
+                        .sortedByDescending { it.value }
+                        .forEach { (label, percent) ->
+                            Text("$label: ${String.format("%.1f", percent)}%")
+                        }
+
+                    uiState.aiConfidence?.let { confidence ->
+                        Text("Confidence: ${String.format("%.2f", confidence)}")
+                    }
+                }
+            }
+
+            Button(
+                onClick = {
+                    if (uiState.points.isNotEmpty()) {
+                        showReplaceOutlineDialog = true
+                    } else {
+                        viewModel.acceptAiBoundary()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = uiState.saveState != FinalOutlineSaveState.Saving
+            ) {
+                Text("Use AI Outline")
+            }
+        }
+
+        if (showReplaceOutlineDialog) {
+            AlertDialog(
+                onDismissRequest = { showReplaceOutlineDialog = false },
+                title = { Text("Replace existing outline?") },
+                text = { Text("A manual outline already exists. Use AI outline instead?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showReplaceOutlineDialog = false
+                            viewModel.acceptAiBoundary()
+                        }
+                    ) {
+                        Text("Replace")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showReplaceOutlineDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -289,7 +409,7 @@ fun ReviewScreen(
 }
 
 private fun mapImagePointToCanvasOffset(
-    point: Offset,
+    point: PointF,
     canvasSize: Size,
     imageWidth: Float,
     imageHeight: Float
