@@ -1,5 +1,12 @@
-# Model Assets Placeholder
+# Wound Segmentation Model
 
-<!-- Expected model asset path for future integration: models/wound_segmentation.tflite -->
+Place the TensorFlow Lite model at:
 
-Do not commit binary model files in this milestone.
+- `models/wound_segmentation.tflite`
+
+Expected model contract:
+
+- **Input size:** `1 x 256 x 256 x 3` (RGB image tensor)
+- **Output shape:**
+  - **Binary segmentation:** `1 x 256 x 256 x 1`
+  - **Multiclass segmentation:** `1 x 256 x 256 x C` (where `C` is number of classes)
