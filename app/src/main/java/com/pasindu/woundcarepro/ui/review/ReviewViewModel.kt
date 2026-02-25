@@ -1,14 +1,24 @@
 package com.pasindu.woundcarepro.ui.review
 
 import android.graphics.PointF
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.Path
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pasindu.woundcarepro.data.local.entity.Assessment
 import com.pasindu.woundcarepro.data.local.repository.AssessmentRepository
+import com.pasindu.woundcarepro.data.repository.AiSegmentationRepository
+import com.pasindu.woundcarepro.domain.ai.WoundSegmentationEngine
 import com.pasindu.woundcarepro.measurement.OutlineJsonConverter
 import com.pasindu.woundcarepro.measurement.PolygonAreaCalculator
+import com.pasindu.woundcarepro.measurement.WoundOutline
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,7 +28,13 @@ data class ReviewUiState(
     val isPolygonClosed: Boolean = false,
     val pixelArea: Double? = null,
     val saveState: FinalOutlineSaveState = FinalOutlineSaveState.Idle,
-    val needsCalibration: Boolean = false
+    val needsCalibration: Boolean = false,
+    val isAiRunning: Boolean = false,
+    val aiError: String? = null,
+    val aiMaskPath: String? = null,
+    val aiBoundaryPoints: List<PointF> = emptyList(),
+    val aiTissuePercents: Map<String, Float> = emptyMap(),
+    val aiConfidence: Float? = null
 )
 
 sealed interface FinalOutlineSaveState {
@@ -30,7 +46,9 @@ sealed interface FinalOutlineSaveState {
 
 @HiltViewModel
 class ReviewViewModel @Inject constructor(
-    private val assessmentRepository: AssessmentRepository
+    private val assessmentRepository: AssessmentRepository,
+    private val woundSegmentationEngine: WoundSegmentationEngine,
+    private val aiSegmentationRepository: AiSegmentationRepository
 ) : ViewModel() {
     private val _assessment = MutableStateFlow<Assessment?>(null)
     val assessment: StateFlow<Assessment?> = _assessment
@@ -122,5 +140,84 @@ class ReviewViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun runAiSegmentation(assessmentId: String, imagePath: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            _uiState.value = _uiState.value.copy(
+                isAiRunning = true,
+                aiError = null
+            )
+
+            runCatching {
+                val segmentationOutput = woundSegmentationEngine.segment(imagePath)
+                val sourceBitmap = BitmapFactory.decodeFile(imagePath)
+                    ?: throw IllegalArgumentException("Unable to decode image from path: $imagePath")
+                val maskBitmap = createMaskBitmap(
+                    width = sourceBitmap.width,
+                    height = sourceBitmap.height,
+                    boundaryPoints = segmentationOutput.boundaryPoints
+                )
+                val tissueMap = segmentationOutput.tissuePercentages
+                    .mapKeys { (label, _) -> label.toString() }
+
+                aiSegmentationRepository.upsertSegmentationResult(
+                    assessmentId = assessmentId,
+                    maskBitmap = maskBitmap,
+                    boundaryPoints = segmentationOutput.boundaryPoints,
+                    tissueMap = tissueMap,
+                    confidence = segmentationOutput.confidence,
+                    runtimeMs = segmentationOutput.runtimeMs
+                )
+
+                val stored = aiSegmentationRepository.getByAssessmentId(assessmentId)
+                _uiState.value = _uiState.value.copy(
+                    isAiRunning = false,
+                    aiError = null,
+                    aiMaskPath = stored?.maskPngPath,
+                    aiBoundaryPoints = segmentationOutput.boundaryPoints,
+                    aiTissuePercents = tissueMap,
+                    aiConfidence = segmentationOutput.confidence
+                )
+            }.onFailure { error ->
+                _uiState.value = _uiState.value.copy(
+                    isAiRunning = false,
+                    aiError = error.message ?: "AI segmentation failed"
+                )
+            }
+        }
+    }
+
+    fun acceptAiBoundary() {
+        val state = _uiState.value
+        if (state.aiBoundaryPoints.size < 3) return
+
+        val outlineJson = OutlineJsonConverter.toJson(WoundOutline(state.aiBoundaryPoints))
+        val acceptedPoints = OutlineJsonConverter.fromJson(outlineJson).points
+        _uiState.value = state.copy(
+            points = acceptedPoints,
+            isPolygonClosed = true,
+            pixelArea = PolygonAreaCalculator.calculateAreaPixels(acceptedPoints)
+        )
+    }
+
+    private fun createMaskBitmap(width: Int, height: Int, boundaryPoints: List<PointF>): Bitmap {
+        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+        if (boundaryPoints.size < 3) return bitmap
+
+        val canvas = Canvas(bitmap)
+        val path = Path().apply {
+            moveTo(boundaryPoints.first().x, boundaryPoints.first().y)
+            for (i in 1 until boundaryPoints.size) {
+                lineTo(boundaryPoints[i].x, boundaryPoints[i].y)
+            }
+            close()
+        }
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = Color.WHITE
+        }
+        canvas.drawPath(path, fillPaint)
+        return bitmap
     }
 }
